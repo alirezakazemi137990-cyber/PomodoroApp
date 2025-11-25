@@ -5,13 +5,12 @@ on:
 
 jobs:
   build:
-    # تغییر مهم: استفاده از نسخه 22.04 برای پایداری ابزارهای بیلد
     runs-on: ubuntu-22.04
 
     steps:
       - uses: actions/checkout@v3
 
-      # 1. Setup Environment (Complete set for Kivy/Android)
+      # 1. Setup Environment
       - name: Install System Dependencies
         run: |
           sudo apt-get update
@@ -46,7 +45,7 @@ jobs:
         with:
           python-version: '3.10'
       
-      # 3. Setup Java 17 (Required for new Android SDK)
+      # 3. Setup Java
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
@@ -59,9 +58,20 @@ jobs:
           pip install --upgrade pip
           pip install buildozer cython==0.29.33
 
-      # 5. Build APK (RELEASE MODE)
-      - name: Build APK
-        run: yes | buildozer android release
+      # 5. Generate Dummy Key & Build Release
+      - name: Build APK (Release with Dummy Key)
+        run: |
+          # ساخت یک کلید موقت برای عبور از مرحله بیلد
+          keytool -genkey -v -keystore dummy.keystore -alias dummy -keyalg RSA -keysize 2048 -validity 10000 -storepass 123456 -keypass 123456 -dname "CN=PomoPulse,O=PomoPulse,C=US"
+          
+          # تنظیم متغیرهای محیطی برای Buildozer
+          export P4A_RELEASE_KEYSTORE=dummy.keystore
+          export P4A_RELEASE_KEYSTORE_PASSWD=123456
+          export P4A_RELEASE_KEYALIAS=dummy
+          export P4A_RELEASE_KEYALIAS_PASSWD=123456
+          
+          # اجرای دستور بیلد
+          yes | buildozer android release
 
       # 6. Upload the APK
       - name: Upload Artifact
