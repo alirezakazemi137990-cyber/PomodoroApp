@@ -9,6 +9,10 @@ package.name = pomopulse
 # (str) Package domain (needed for android/ios packaging)
 package.domain = org.pomopulse
 
+# (str) Version of your application
+# این خط فراموش شده بود و باعث ارور شد
+version = 1.0
+
 # (str) Source code where the main.py live
 source.dir = .
 
@@ -57,4 +61,15 @@ android.private_storage = True
 android.logcat_filters = *:S python:D
 
 # (str) The Android arch to build for, choices: armeabi-v7a, arm64-v8a, x86, x86_64
-android.archs = arm
+android.archs = arm64-v8a
+
+# (bool) enables Android auto backup feature (Android API >=23)
+android.allow_backup = True
+
+[buildozer]
+
+# (int) Log level (0 = error only, 1 = info, 2 = debug (with command output))
+log_level = 2
+
+# (int) Display warning if buildozer is run as root (0 = False, 1 = True)
+warn_on_root = 1
