@@ -20,8 +20,9 @@ source.dir = .
 source.include_exts = py,png,jpg,kv,atlas
 
 # (list) Application requirements
-# لیست کامل کتابخانه‌ها برای جلوگیری از کرش کردن برنامه
-requirements = python3,kivy==2.3.0,https://github.com/kivymd/KivyMD/archive/master.zip,pillow,plyer,materialyoucolor,exceptiongroup,asyncgui,asynckivy
+# لیست کامل و صحیح بر اساس main.py شما
+requirements = python3,kivy==2.3.0,https://github.com/kivymd/KivyMD/archive/master.zip,pillow,plyer,jnius
+
 
 # (str) Icon of the application
 icon.filename = %(source.dir)s/icon.png
@@ -73,3 +74,4 @@ log_level = 2
 
 # (int) Display warning if buildozer is run as root (0 = False, 1 = True)
 warn_on_root = 1
+
