@@ -1,32 +1,60 @@
 [app]
-# (1) Title of your application
-title = Pomodoro Pro
-package.name = pomodoropro
-package.domain = org.doctor.pomodoro
 
-# (2) Source configuration
+# (str) Title of your application
+title = PomoPulse
+
+# (str) Package name
+package.name = pomopulse
+
+# (str) Package domain (needed for android/ios packaging)
+package.domain = org.pomopulse
+
+# (str) Source code where the main.py live
 source.dir = .
-source.include_exts = py,png,jpg,kv,atlas,mp3,wav,txt,ttf,json
 
-# (3) Versioning
-version = 1.0
+# (list) Source files to include (let empty to include all the files)
+source.include_exts = py,png,jpg,kv,atlas
 
-# (4) Requirements (FIXED: Removed conflicting kivymd version)
-requirements = python3,kivy==2.3.0,https://github.com/kivymd/KivyMD/archive/master.zip,plyer,pillow,materialyoucolor,exceptiongroup,asyncgui,asynckivy
+# (list) Application requirements
+# لیست کامل کتابخانه‌ها برای جلوگیری از کرش کردن برنامه
+requirements = python3,kivy==2.3.0,https://github.com/kivymd/KivyMD/archive/master.zip,pillow,plyer,materialyoucolor,exceptiongroup,asyncgui,asynckivy
 
-# (5) Orientation and permissions
+# (str) Icon of the application
+icon.filename = %(source.dir)s/icon.png
+
+# (str) Supported orientation (one of landscape, sensorLandscape, portrait or all)
 orientation = portrait
+
+#
+# Android Specific
+#
+
+# (bool) Indicate if the application should be fullscreen or not
 fullscreen = 0
-android.permissions = VIBRATE,FOREGROUND_SERVICE,WAKE_LOCK,INTERNET
 
-# (6) Android Specifics
+# (string) Presplash background color (for android toolchain)
+android.presplash_color = #FFFFFF
+
+# (list) Permissions
+android.permissions = INTERNET
+
+# (int) Target Android API, should be as high as possible.
 android.api = 33
-android.minapi = 21
-android.ndk = 25b
-android.accept_sdk_license = True
-android.archs = arm64-v8a, armeabi-v7a
 
-# (7) Buildozer settings
-[buildozer]
-log_level = 2
-warn_on_root = 1
+# (int) Minimum API your APK will support.
+android.minapi = 21
+
+# (int) Android SDK version to use
+android.sdk = 24
+
+# (str) Android NDK version to use
+android.ndk = 25b
+
+# (bool) Use --private data storage (True) or --dir public storage (False)
+android.private_storage = True
+
+# (str) Android logcat filters to use
+android.logcat_filters = *:S python:D
+
+# (str) The Android arch to build for, choices: armeabi-v7a, arm64-v8a, x86, x86_64
+android.archs = arm
