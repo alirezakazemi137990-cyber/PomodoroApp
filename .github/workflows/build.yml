@@ -59,9 +59,9 @@ jobs:
           pip install --upgrade pip
           pip install buildozer cython==0.29.33
 
-      # 5. Build APK (with yes pipe)
+      # 5. Build APK (RELEASE MODE)
       - name: Build APK
-        run: yes | buildozer android debug
+        run: yes | buildozer android release
 
       # 6. Upload the APK
       - name: Upload Artifact
