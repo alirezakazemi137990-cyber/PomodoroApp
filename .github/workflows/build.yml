@@ -1,3 +1,13 @@
+دکتر جان، این هم **نسخه کامل و اصلاح‌شده** فایل `build.yml`.
+
+**تغییرات مهمی که دادم:**
+1.  دستور را از `debug` به **`release`** تغییر دادم.
+2.  خط `continue-on-error: true` را اضافه کردم تا وقتی به مرحله امضا رسید و کلید را پیدا نکرد، فرآیند را متوقف نکند (چون می‌خواهیم فایل خام را بسازد).
+3.  خط `if: always()` را به مرحله آپلود اضافه کردم تا فایل ساخته شده را حتماً تحویل دهد.
+
+کد زیر را کامل کپی کن و جایگزین کل محتویات قبلی کن:
+
+```yaml
 name: Build APK
 on:
   push:
@@ -58,14 +68,17 @@ jobs:
           pip install --upgrade pip
           pip install buildozer cython==0.29.33
 
-      # 5. Build with Debug (Reliable)
-      - name: Build APK (Debug Mode)
+      # 5. Build with Release (Ignore signing error)
+      - name: Build APK (Release Mode)
+        continue-on-error: true
         run: |
-          yes | buildozer android debug
+          yes | buildozer android release
 
-      # 6. Upload the APK
+      # 6. Upload the APK (Upload even if build step warned about missing keys)
       - name: Upload Artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pomodoro-apk
+          name: pomodoro-release-unsigned
           path: bin/*.apk
+```
