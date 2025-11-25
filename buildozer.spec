@@ -10,8 +10,7 @@ package.name = pomopulse
 package.domain = org.pomopulse
 
 # (str) Version of your application
-# این خط فراموش شده بود و باعث ارور شد
-version = 1.0
+version = 1.0.0
 
 # (str) Source code where the main.py live
 source.dir = .
@@ -20,9 +19,7 @@ source.dir = .
 source.include_exts = py,png,jpg,kv,atlas
 
 # (list) Application requirements
-# لیست کامل: شامل پیش‌نیازهای KivyMD و ابزار اندروید
 requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,plyer,pyjnius
-
 
 # (str) Icon of the application
 icon.filename = %(source.dir)s/icon.png
@@ -41,7 +38,7 @@ fullscreen = 0
 android.presplash_color = #FFFFFF
 
 # (list) Permissions
-android.permissions = INTERNET
+android.permissions = INTERNET,VIBRATE,WAKE_LOCK
 
 # (int) Target Android API, should be as high as possible.
 android.api = 33
@@ -61,8 +58,8 @@ android.private_storage = True
 # (str) Android logcat filters to use
 android.logcat_filters = *:S python:D
 
-# (str) The Android arch to build for, choices: armeabi-v7a, arm64-v8a, x86, x86_64
-android.archs = arm64-v8a
+# (str) The Android arch to build for
+android.archs = arm64-v8a, armeabi-v7a
 
 # (bool) enables Android auto backup feature (Android API >=23)
 android.allow_backup = True
@@ -74,6 +71,3 @@ log_level = 2
 
 # (int) Display warning if buildozer is run as root (0 = False, 1 = True)
 warn_on_root = 1
-
-
-
