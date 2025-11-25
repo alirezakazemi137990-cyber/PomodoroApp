@@ -20,8 +20,8 @@ source.dir = .
 source.include_exts = py,png,jpg,kv,atlas
 
 # (list) Application requirements
-# لیست کامل و صحیح بر اساس main.py شما
-requirements = python3,kivy==2.3.0,https://github.com/kivymd/KivyMD/archive/master.zip,pillow,plyer,jnius
+# لیست کامل: شامل پیش‌نیازهای KivyMD و ابزار اندروید
+requirements = python3,kivy==2.3.0,https://github.com/kivymd/KivyMD/archive/master.zip,pillow,plyer,pyjnius,materialyoucolor,exceptiongroup,asyncgui,asynckivy
 
 
 # (str) Icon of the application
@@ -74,4 +74,5 @@ log_level = 2
 
 # (int) Display warning if buildozer is run as root (0 = False, 1 = True)
 warn_on_root = 1
+
 
