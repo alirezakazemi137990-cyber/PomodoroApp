@@ -59,18 +59,18 @@ jobs:
           pip install buildozer cython==0.29.33
 
       # 5. Generate Dummy Key & Build Release
-      - name: Build APK (Release with Dummy Key)
+      - name: Build APK (Release with Absolute Path)
         run: |
-          # ساخت یک کلید موقت برای عبور از مرحله بیلد
+          # 1. Generate Key
           keytool -genkey -v -keystore dummy.keystore -alias dummy -keyalg RSA -keysize 2048 -validity 10000 -storepass 123456 -keypass 123456 -dname "CN=PomoPulse,O=PomoPulse,C=US"
           
-          # تنظیم متغیرهای محیطی برای Buildozer
-          export P4A_RELEASE_KEYSTORE=dummy.keystore
+          # 2. Export Absolute Paths (The Fix!)
+          export P4A_RELEASE_KEYSTORE=$(pwd)/dummy.keystore
           export P4A_RELEASE_KEYSTORE_PASSWD=123456
           export P4A_RELEASE_KEYALIAS=dummy
           export P4A_RELEASE_KEYALIAS_PASSWD=123456
           
-          # اجرای دستور بیلد
+          # 3. Build
           yes | buildozer android release
 
       # 6. Upload the APK
