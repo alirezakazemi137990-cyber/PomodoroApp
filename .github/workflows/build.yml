@@ -24,11 +24,11 @@ jobs:
         with:
           python-version: '3.10'
 
-      # 4. نصب نیازمندی‌های سیستمی (اصلاح نام zlib1g-dev)
+      # 4. نصب نیازمندی‌های سیستمی (لیست کامل و نهایی برای کامپایل)
       - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libffi-dev libssl-dev autoconf automake libtool pkg-config zlib1g-dev
+          sudo apt-get install -y build-essential libffi-dev libssl-dev python3-dev git zip unzip autoconf automake libtool pkg-config zlib1g-dev cmake libltdl-dev autopoint
 
       # 5. نصب بیلدوزر
       - name: Install Buildozer
