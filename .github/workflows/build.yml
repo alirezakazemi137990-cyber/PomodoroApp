@@ -1,82 +1,18 @@
-name: Build APK
-on:
-  push:
-    branches: [ master, main ]
-
-jobs:
-  build:
-    runs-on: ubuntu-22.04
-
-    steps:
-      - uses: actions/checkout@v3
-
-      # 1. Setup Environment
-      - name: Install System Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            git \
-            ffmpeg \
-            libsdl2-dev \
-            libsdl2-image-dev \
-            libsdl2-mixer-dev \
-            libsdl2-ttf-dev \
-            libportmidi-dev \
-            libswscale-dev \
-            libavformat-dev \
-            libavcodec-dev \
-            zlib1g-dev \
-            libtool \
-            libtool-bin \
-            autoconf \
-            automake \
-            cmake \
-            gettext \
-            pkg-config \
-            libffi-dev \
-            libssl-dev \
-            zip \
-            unzip
-
-      # 2. Set up Python
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-      
-      # 3. Setup Java
-      - name: Setup Java
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
       # 4. Install Buildozer
       - name: Install Buildozer
         run: |
           pip install --upgrade pip
           pip install buildozer cython==0.29.33
 
-      # 5. Create Dummy Keystore (To satisfy Buildozer)
-      - name: Create Dummy Keystore
+      # 5. Build APK (Debug Mode - Safe & Fast)
+      - name: Build APK (Debug Mode)
         run: |
-          keytool -genkey -v -keystore dummy.keystore -alias dummy -keyalg RSA -keysize 2048 -validity 10000 -storepass 123456 -keypass 123456 -dname "CN=Dummy, OU=Dummy, O=Dummy, L=Dummy, S=Dummy, C=US"
+          yes | buildozer android debug
 
-      # 6. Build APK (Release Mode with Dummy Key)
-      - name: Build APK (Release Mode)
-        env:
-          P4A_RELEASE_KEYSTORE: ${{ github.workspace }}/dummy.keystore
-          P4A_RELEASE_KEYSTORE_PASSWD: "123456"
-          P4A_RELEASE_KEYALIAS: "dummy"
-          P4A_RELEASE_KEYALIAS_PASSWD: "123456"
-        run: |
-          yes | buildozer android release
-
-      # 7. Upload the APK
+      # 6. Upload Artifact
       - name: Upload Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pomodoro-release-ready
+          name: pomodoro-debug
           path: bin/*.apk
