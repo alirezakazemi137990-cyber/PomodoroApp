@@ -58,16 +58,25 @@ jobs:
           pip install --upgrade pip
           pip install buildozer cython==0.29.33
 
-      # 5. Build with Release (Ignore signing error)
+      # 5. Create Dummy Keystore (To satisfy Buildozer)
+      - name: Create Dummy Keystore
+        run: |
+          keytool -genkey -v -keystore dummy.keystore -alias dummy -keyalg RSA -keysize 2048 -validity 10000 -storepass 123456 -keypass 123456 -dname "CN=Dummy, OU=Dummy, O=Dummy, L=Dummy, S=Dummy, C=US"
+
+      # 6. Build APK (Release Mode with Dummy Key)
       - name: Build APK (Release Mode)
-        continue-on-error: true
+        env:
+          P4A_RELEASE_KEYSTORE: ${{ github.workspace }}/dummy.keystore
+          P4A_RELEASE_KEYSTORE_PASSWD: "123456"
+          P4A_RELEASE_KEYALIAS: "dummy"
+          P4A_RELEASE_KEYALIAS_PASSWD: "123456"
         run: |
           yes | buildozer android release
 
-      # 6. Upload the APK (Upload even if build step warned about missing keys)
+      # 7. Upload the APK
       - name: Upload Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pomodoro-release-unsigned
+          name: pomodoro-release-ready
           path: bin/*.apk
