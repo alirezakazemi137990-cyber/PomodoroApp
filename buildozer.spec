@@ -19,7 +19,7 @@ source.dir = .
 source.include_exts = py,png,jpg,kv,atlas
 
 # (list) Application requirements
-requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,plyer,pyjnius
+requirements = python3,kivy==2.3.0,kivymd==1.1.1,pillow,plyer,pyjnius
 
 # (str) Icon of the application
 icon.filename = %(source.dir)s/icon.png
@@ -71,3 +71,4 @@ log_level = 2
 
 # (int) Display warning if buildozer is run as root (0 = False, 1 = True)
 warn_on_root = 1
+
