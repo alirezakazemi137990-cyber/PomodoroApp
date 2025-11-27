@@ -35,16 +35,23 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install buildozer cython==0.29.33
-
-      # 6. ساخت فایل APK (نسخه Debug - بدون دردسر)
-      - name: Build APK (Debug Mode)
+      # 5. ساخت نسخه Release (با کلید موقت جهت تکمیل پروسه)
+      - name: Build with Buildozer
+        env:
+          P4A_RELEASE_KEYSTORE: release.keystore
+          P4A_RELEASE_KEYSTORE_PASSWD: password123
+          P4A_RELEASE_KEYALIAS: myalias
+          P4A_RELEASE_KEYALIAS_PASSWD: password123
         run: |
-          yes | buildozer android debug
+          # ساخت یک کلید موقت تا بیلدوزر گیر نکند
+          keytool -genkey -v -keystore release.keystore -alias myalias -keyalg RSA -keysize 2048 -validity 10000 -storepass password123 -keypass password123 -dname "CN=Temp,O=Temp,C=US"
+          
+          # شروع بیلد ریلیز
+          yes | buildozer android release
 
-      # 7. آپلود فایل خروجی
-      - name: Upload Artifact
-        if: always()
+      # 6. آپلود فایل خروجی
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: pomodoro-debug
+          name: package
           path: bin/*.apk
