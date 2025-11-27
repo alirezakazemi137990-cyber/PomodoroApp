@@ -19,10 +19,10 @@ source.dir = .
 source.include_exts = py,png,jpg,kv,atlas
 
 # (list) Application requirements
-requirements = python3,kivy==2.3.0,https://github.com/kivymd/KivyMD/archive/master.zip,pillow,plyer,pyjnius,materialyoucolor,exceptiongroup,asyncgui,asynckivy
+requirements = python3,kivy==2.3.0,kivymd==1.1.1,pillow,plyer,pyjnius,materialyoucolor,exceptiongroup,asyncgui,asynckivy
 
 # (str) Icon of the application
-icon.filename = %(source.dir)s/icon.png
+icon.filename= %(source.dir)s/icon.png
 
 # (str) Supported orientation (one of landscape, sensorLandscape, portrait or all)
 orientation = portrait
@@ -71,5 +71,6 @@ log_level = 2
 
 # (int) Display warning if buildozer is run as root (0 = False, 1 = True)
 warn_on_root = 1
+
 
 
