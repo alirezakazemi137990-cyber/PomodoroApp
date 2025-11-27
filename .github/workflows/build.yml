@@ -30,28 +30,30 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential libffi-dev libssl-dev python3-dev git zip unzip autoconf automake libtool pkg-config zlib1g-dev cmake libltdl-dev autopoint
           
-      # 5. ساخت نسخه Release (روش اصلاح‌شده بدون yes برای جلوگیری از Broken Pipe)
+      # 5. ساخت نسخه Release (روش قطعی: فعال‌سازی لایسنس در کانفیگ)
       - name: Build with Buildozer
         env:
-          # آدرس‌دهی کامل کلید
           P4A_RELEASE_KEYSTORE: ${{ github.workspace }}/release.keystore
           P4A_RELEASE_KEYSTORE_PASSWD: password123
           P4A_RELEASE_KEYALIAS: myalias
           P4A_RELEASE_KEYALIAS_PASSWD: password123
-          # این خط حیاتی است: خودکار لایسنس‌ها را قبول می‌کند
-          android.accept_sdk_license: "True"
-          buildozer.accept_sdk_license: "True"
         run: |
-          # نصب ابزارها
+          # نصب ابزارهای ضروری
           pip install buildozer cython pillow
+
+          # --- حیاتی: فعال‌سازی پذیرش لایسنس در buildozer.spec ---
+          # این دستور خط کامنت شده لایسنس را پیدا کرده و آن را روی True تنظیم می‌کند
+          sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/' buildozer.spec
+          # محض اطمینان، اگر قبلاً از کامنت خارج شده ولی False است، آن را هم True می‌کند
+          sed -i 's/android.accept_sdk_license = False/android.accept_sdk_license = True/' buildozer.spec
 
           # تولید کلید در مسیر اصلی
           keytool -genkey -v -keystore ${{ github.workspace }}/release.keystore -alias myalias -keyalg RSA -keysize 2048 -validity 10000 -storepass password123 -keypass password123 -dname "CN=Temp,O=Temp,C=US"
           
-          # تغییر مالکیت فایل‌ها برای جلوگیری از مشکلات دسترسی (محض اطمینان)
+          # اطمینان از دسترسی فایل‌ها
           sudo chown -R $USER:$USER .
 
-          # اجرای بیلد (بدون yes، چون لایسنس‌ها را با env قبول کردیم)
+          # اجرای بیلد (بدون yes و بدون -v برای جلوگیری از پر شدن بافر)
           buildozer android release
 
       # 6. آپلود فایل خروجی
