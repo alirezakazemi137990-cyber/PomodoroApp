@@ -29,23 +29,23 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libffi-dev libssl-dev python3-dev git zip unzip autoconf automake libtool pkg-config zlib1g-dev cmake libltdl-dev autopoint
-
-      # 5. ساخت نسخه Release (همراه با نصب تضمینی Buildozer - اصلاح شده و بدون تکرار)
+      # 5. ساخت نسخه Release (با آدرس‌دهی دقیق کلید)
       - name: Build with Buildozer
         env:
-          P4A_RELEASE_KEYSTORE: release.keystore
+          # استفاده از آدرس کامل (workspace) برای پیدا شدن قطعی فایل کلید
+          P4A_RELEASE_KEYSTORE: ${{ github.workspace }}/release.keystore
           P4A_RELEASE_KEYSTORE_PASSWD: password123
           P4A_RELEASE_KEYALIAS: myalias
           P4A_RELEASE_KEYALIAS_PASSWD: password123
         run: |
-          # نصب قطعی بیلدوزر و سایفون قبل از اجرا
+          # نصب ابزارها
           pip install buildozer cython pillow
 
-          # تولید کلید موقت
-          keytool -genkey -v -keystore release.keystore -alias myalias -keyalg RSA -keysize 2048 -validity 10000 -storepass password123 -keypass password123 -dname "CN=Temp,O=Temp,C=US"
+          # تولید کلید در مسیر اصلی
+          keytool -genkey -v -keystore ${{ github.workspace }}/release.keystore -alias myalias -keyalg RSA -keysize 2048 -validity 10000 -storepass password123 -keypass password123 -dname "CN=Temp,O=Temp,C=US"
           
-          # اجرای بیلد
-          yes | buildozer android release
+          # اجرای بیلد با لاگ دقیق‌تر (Verbose) برای دیدن خطاهای احتمالی
+          yes | buildozer -v android release
 
       # 6. آپلود فایل خروجی
       - name: Upload artifacts
