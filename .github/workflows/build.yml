@@ -30,7 +30,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential libffi-dev libssl-dev python3-dev git zip unzip autoconf automake libtool pkg-config zlib1g-dev cmake libltdl-dev autopoint
           
-      # 5. ساخت نسخه Release (روش هوشمند: ارسال y هر ۵ ثانیه برای جلوگیری از کرش)
+      # 5. ساخت نسخه Release (با نصب کامل dependencies و مدیریت هوشمند ورودی)
       - name: Build with Buildozer
         env:
           P4A_RELEASE_KEYSTORE: ${{ github.workspace }}/release.keystore
@@ -38,32 +38,35 @@ jobs:
           P4A_RELEASE_KEYALIAS: myalias
           P4A_RELEASE_KEYALIAS_PASSWD: password123
         run: |
-          # 1. نصب پیش‌نیازهای سیستمی و پایتون
+          # 1. نصب پکیج‌های حیاتی برای کامپایل (اضافه شدن autoconf و libtool)
           sudo apt-get update
-          sudo apt-get install -y build-essential libffi-dev libssl-dev python3-dev git zlib1g-dev
+          sudo apt-get install -y build-essential libffi-dev libssl-dev python3-dev git zlib1g-dev autoconf libtool pkg-config
+
+          # 2. نصب ابزارهای پایتون
           pip install buildozer cython pillow
 
-          # 2. تنظیم اجباری پذیرش لایسنس در کانفیگ
+          # 3. تنظیم کانفیگ
           sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/' buildozer.spec
           sed -i 's/android.accept_sdk_license = False/android.accept_sdk_license = True/' buildozer.spec
 
-          # 3. تولید کلید امضا (Keystore)
+          # 4. تولید کلید
           keytool -genkey -v -keystore ${{ github.workspace }}/release.keystore -alias myalias -keyalg RSA -keysize 2048 -validity 10000 -storepass password123 -keypass password123 -dname "CN=Temp,O=Temp,C=US"
           
-          # 4. اصلاح دسترسی‌ها
+          # 5. اصلاح دسترسی‌ها
           sudo chown -R $USER:$USER .
 
-          # 5. اجرای بیلد با "تزریق‌گر هوشمند" (جلوگیری از کرش Broken Pipe)
-          # این اسکریپت پایتون دکمه y را می‌زند اما اگر بیلدوزر بسته شد، ارور نمی‌دهد.
+          # 6. اجرای بیلد (کد پایتون اصلاح شده برای مدیریت SIGPIPE و جلوگیری از ارور)
           python3 -c "
-          import sys, time
+          import sys, time, os, signal
+          # جلوگیری از ارور BrokenPipe با تنظیم سیگنال
+          signal.signal(signal.SIGPIPE, signal.SIG_DFL)
           try:
               while True:
                   sys.stdout.write('y\n')
                   sys.stdout.flush()
-                  time.sleep(1)
+                  time.sleep(3)
           except (BrokenPipeError, IOError):
-              pass
+              os._exit(0)
           " | buildozer android release
 
 
