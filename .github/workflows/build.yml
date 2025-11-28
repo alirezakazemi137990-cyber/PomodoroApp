@@ -38,26 +38,33 @@ jobs:
           P4A_RELEASE_KEYALIAS: myalias
           P4A_RELEASE_KEYALIAS_PASSWD: password123
         run: |
-          # 1. نصب مجدد پیش‌نیازهای سیستمی (جهت اطمینان صددرصد)
+          # 1. نصب پیش‌نیازهای سیستمی و پایتون
           sudo apt-get update
           sudo apt-get install -y build-essential libffi-dev libssl-dev python3-dev git zlib1g-dev
-
-          # 2. نصب ابزارهای پایتون
           pip install buildozer cython pillow
 
-          # 3. تنظیم کانفیگ
+          # 2. تنظیم اجباری پذیرش لایسنس در کانفیگ
           sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/' buildozer.spec
           sed -i 's/android.accept_sdk_license = False/android.accept_sdk_license = True/' buildozer.spec
 
-          # 4. تولید کلید
+          # 3. تولید کلید امضا (Keystore)
           keytool -genkey -v -keystore ${{ github.workspace }}/release.keystore -alias myalias -keyalg RSA -keysize 2048 -validity 10000 -storepass password123 -keypass password123 -dname "CN=Temp,O=Temp,C=US"
           
-          # 5. تنظیم دسترسی‌ها
+          # 4. اصلاح دسترسی‌ها
           sudo chown -R $USER:$USER .
 
-          # 6. اجرای بیلد با ترفند "تایپ آهسته" (جلوگیری از Broken Pipe و رد کردن لایسنس)
-          (while true; do echo y; sleep 5; done) | buildozer android release
-
+          # 5. اجرای بیلد با "تزریق‌گر هوشمند" (جلوگیری از کرش Broken Pipe)
+          # این اسکریپت پایتون دکمه y را می‌زند اما اگر بیلدوزر بسته شد، ارور نمی‌دهد.
+          python3 -c "
+          import sys, time
+          try:
+              while True:
+                  sys.stdout.write('y\n')
+                  sys.stdout.flush()
+                  time.sleep(1)
+          except (BrokenPipeError, IOError):
+              pass
+          " | buildozer android release
 
 
       # 6. آپلود فایل خروجی
