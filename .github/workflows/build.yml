@@ -1,78 +1,26 @@
-name: Build
+name: Build APK
+
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. دریافت کدها
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
-      # 2. نصب جاوا (برای بیلد اندروید الزامی است)
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+      # محیط آماده Buildozer رسمی (تست‌شده توسط Kivy)
+      - name: Build using official Kivy Buildozer container
+        uses: kivy/buildozer-action@v1
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          buildozer_version: stable
+          command: android debug
 
-      # 3. نصب پایتون
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
         with:
-          python-version: '3.10'
-
-      # 4. نصب نیازمندی‌های سیستمی (لیست کامل و نهایی برای کامپایل)
-      - name: Install System Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential libffi-dev libssl-dev python3-dev git zip unzip autoconf automake libtool pkg-config zlib1g-dev cmake libltdl-dev autopoint
-          
-      # 5. ساخت نسخه Release (با نصب کامل dependencies و مدیریت هوشمند ورودی)
-      - name: Build with Buildozer
-        env:
-          P4A_RELEASE_KEYSTORE: ${{ github.workspace }}/release.keystore
-          P4A_RELEASE_KEYSTORE_PASSWD: password123
-          P4A_RELEASE_KEYALIAS: myalias
-          P4A_RELEASE_KEYALIAS_PASSWD: password123
-        run: |
-          # 1. نصب پکیج‌های حیاتی برای کامپایل (اضافه شدن autoconf و libtool)
-          sudo apt-get update
-          sudo apt-get install -y build-essential libffi-dev libssl-dev python3-dev git zlib1g-dev autoconf libtool pkg-config
-
-          # 2. نصب ابزارهای پایتون
-          pip install buildozer cython pillow
-
-          # 3. تنظیم کانفیگ
-          sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/' buildozer.spec
-          sed -i 's/android.accept_sdk_license = False/android.accept_sdk_license = True/' buildozer.spec
-
-          # 4. تولید کلید
-          keytool -genkey -v -keystore ${{ github.workspace }}/release.keystore -alias myalias -keyalg RSA -keysize 2048 -validity 10000 -storepass password123 -keypass password123 -dname "CN=Temp,O=Temp,C=US"
-          
-          # 5. اصلاح دسترسی‌ها
-          sudo chown -R $USER:$USER .
-
-          # 6. اجرای بیلد (کد پایتون اصلاح شده برای مدیریت SIGPIPE و جلوگیری از ارور)
-          python3 -c "
-          import sys, time, os, signal
-          # جلوگیری از ارور BrokenPipe با تنظیم سیگنال
-          signal.signal(signal.SIGPIPE, signal.SIG_DFL)
-          try:
-              while True:
-                  sys.stdout.write('y\n')
-                  sys.stdout.flush()
-                  time.sleep(3)
-          except (BrokenPipeError, IOError):
-              os._exit(0)
-          " | buildozer android release
-
-
-      # 6. آپلود فایل خروجی
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: package
+          name: PomodoroApp
           path: bin/*.apk
