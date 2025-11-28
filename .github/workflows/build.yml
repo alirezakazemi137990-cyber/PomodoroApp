@@ -30,7 +30,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential libffi-dev libssl-dev python3-dev git zip unzip autoconf automake libtool pkg-config zlib1g-dev cmake libltdl-dev autopoint
           
-      # 5. ساخت نسخه Release (بازگشت yes برای عبور از سد لایسنس گوگل)
+      # 5. ساخت نسخه Release (روش هوشمند: ارسال y هر ۵ ثانیه برای جلوگیری از کرش)
       - name: Build with Buildozer
         env:
           P4A_RELEASE_KEYSTORE: ${{ github.workspace }}/release.keystore
@@ -38,21 +38,26 @@ jobs:
           P4A_RELEASE_KEYALIAS: myalias
           P4A_RELEASE_KEYALIAS_PASSWD: password123
         run: |
-          # نصب ابزارها
+          # 1. نصب مجدد پیش‌نیازهای سیستمی (جهت اطمینان صددرصد)
+          sudo apt-get update
+          sudo apt-get install -y build-essential libffi-dev libssl-dev python3-dev git zlib1g-dev
+
+          # 2. نصب ابزارهای پایتون
           pip install buildozer cython pillow
 
-          # تنظیم کانفیگ (جهت اطمینان)
+          # 3. تنظیم کانفیگ
           sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/' buildozer.spec
           sed -i 's/android.accept_sdk_license = False/android.accept_sdk_license = True/' buildozer.spec
 
-          # تولید کلید
+          # 4. تولید کلید
           keytool -genkey -v -keystore ${{ github.workspace }}/release.keystore -alias myalias -keyalg RSA -keysize 2048 -validity 10000 -storepass password123 -keypass password123 -dname "CN=Temp,O=Temp,C=US"
           
-          # دسترسی‌ها
+          # 5. تنظیم دسترسی‌ها
           sudo chown -R $USER:$USER .
 
-          # اجرای بیلد با yes (بدون -v برای جلوگیری از کرش سیستم)
-          yes | buildozer android release
+          # 6. اجرای بیلد با ترفند "تایپ آهسته" (جلوگیری از Broken Pipe و رد کردن لایسنس)
+          (while true; do echo y; sleep 5; done) | buildozer android release
+
 
 
       # 6. آپلود فایل خروجی
