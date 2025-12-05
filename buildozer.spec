@@ -16,10 +16,10 @@ version = 1.0.0
 source.dir = .
 
 # (list) Source files to include (let empty to include all the files)
-source.include_exts = py,png,jpg,kv,atlas
+source.include_exts = py,png,jpg,kv,atlas,ini,csv
 
 # (list) Application requirements
-requirements = python3,kivy==2.3.0,kivymd==1.1.1,pillow,plyer,pyjnius,materialyoucolor,exceptiongroup,asyncgui,asynckivy
+requirements = python3,kivy==2.1.0,kivymd==1.1.1,pillow,plyer,pyjnius
 
 # (str) Icon of the application
 icon.filename= %(source.dir)s/icon.png
@@ -38,7 +38,7 @@ fullscreen = 0
 android.presplash_color = #FFFFFF
 
 # (list) Permissions
-android.permissions = INTERNET,VIBRATE,WAKE_LOCK
+android.permissions = INTERNET,VIBRATE,WAKE_LOCK,POST_NOTIFICATIONS
 
 # (int) Target Android API, should be as high as possible.
 android.api = 33
@@ -50,7 +50,7 @@ android.minapi = 21
 android.sdk = 24
 
 # (str) Android NDK version to use
-android.ndk = 25b
+android.ndk = 23c
 
 # (bool) Use --private data storage (True) or --dir public storage (False)
 android.private_storage = True
@@ -59,7 +59,7 @@ android.private_storage = True
 android.logcat_filters = *:S python:D
 
 # (str) The Android arch to build for
-android.archs = arm64-v8a
+android.archs = arm64-v8a, armeabi-v7a
 
 # (bool) enables Android auto backup feature (Android API >=23)
 android.allow_backup = True
@@ -71,6 +71,7 @@ log_level = 2
 
 # (int) Display warning if buildozer is run as root (0 = False, 1 = True)
 warn_on_root = 1
+
 
 
 
