@@ -69,19 +69,19 @@ jobs:
             ./.buildozer/android/platform/build/dists/**/bin/*.apk
             ./.buildozer/android/platform/build/outputs/**/*.apk
 
-# --- اگر می‌خواهی release-signed برای گوگل‌پلی بسازی، این بلوک را فعال کن و مقادیر keystore را در Secrets قرار بده:
-#      - name: Build release signed AAB
-#        env:
-#          ANDROID_HOME: $HOME/android-sdk
-#          ANDROID_SDK_ROOT: $HOME/android-sdk
-#          PATH: $HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH
-#          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-#          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-#          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-#          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-#        run: |
-#          echo "$KEYSTORE_BASE64" | base64 --decode > mykeystore.jks
-#          # تنظیمات امضا را در buildozer.spec اضافه کن یا از دستور زیر استفاده کن
+ --- اگر می‌خواهی release-signed برای گوگل‌پلی بسازی، این بلوک را فعال کن و مقادیر keystore را در Secrets قرار بده:
+      - name: Build release signed AAB
+        env:
+          ANDROID_HOME: $HOME/android-sdk
+          ANDROID_SDK_ROOT: $HOME/android-sdk
+          PATH: $HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > mykeystore.jks
+          # تنظیمات امضا را در buildozer.spec اضافه کن یا از دستور زیر استفاده کن
 #          buildozer android release
 #          jarsigner -keystore mykeystore.jks -storepass "$KEYSTORE_PASSWORD" bin/*.apk "$KEY_ALIAS"
 #          zipalign -v -p 4 bin/*.apk bin/*-aligned.apk
