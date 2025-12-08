@@ -42,7 +42,8 @@ jobs:
     - name: Configure Buildozer and Dependencies
       run: |
         pip install --upgrade pip
-        pip install buildozer "cython>=3.0.0" "setuptools<70"
+        # نصب نسخه خاص Cython که برای Kivy 2.2.1 الزامی است
+        pip install buildozer "Cython==0.29.36"
 
         # تنظیم API روی 33
         sed -i 's/android.api = 34/android.api = 33/g' buildozer.spec
@@ -50,13 +51,31 @@ jobs:
           sed -i 's/android.api = .*/android.api = 33/g' buildozer.spec
         fi
 
-        # تنظیم نیازمندی‌ها
-        sed -i 's/^requirements =.*/requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,plyer,pyjnius/g' buildozer.spec
+        # --- تغییر مهم: استفاده از نسخه‌های پایدار Kivy 2.2.1 و KivyMD 1.1.1 ---
+        sed -i 's/^requirements =.*/requirements = python3,kivy==2.2.1,kivymd==1.1.1,pillow,plyer,pyjnius/g' buildozer.spec
 
-        # پذیرش لایسنس
+        # اطمینان از پذیرش لایسنس
         sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
 
-        # نکته: حذف اجبار p4a.branch = master برای جلوگیری از ناپایداری
+    - name: Build APK with Buildozer
+      run: |
+        # پاکسازی متغیرهای محیطی برای جلوگیری از تداخل
+        unset ANDROID_NDK_HOME
+        unset ANDROID_NDK_ROOT
+        unset ANDROID_NDK
+        unset ANDROID_SDK_ROOT
+        unset ANDROID_HOME
+        unset ANDROID_NDK_LATEST_HOME
+        unset JAVA_HOME_21_X64
+        unset JAVA_HOME_25_X64
+        
+        # پاکسازی کش قبلی
+        rm -rf .buildozer
+        
+        # شروع بیلد با ارسال "y" برای سوالات احتمالی
+        # استفاده از Kivy 2.2.1 پایداری را تضمین می‌کند
+        echo "y" | buildozer -v android debug
+
 
     - name: Build APK with Buildozer
       run: |
