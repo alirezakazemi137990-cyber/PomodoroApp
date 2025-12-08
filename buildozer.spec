@@ -97,7 +97,7 @@ android.permissions = INTERNET,VIBRATE,WAKE_LOCK
 #android.features = android.hardware.usb.host
 
 # (int) Target Android API, should be as high as possible.
-#android.api = 31
+android.api = 34
 
 # (int) Minimum API your APK / AAB will support.
 #android.minapi = 21
@@ -106,7 +106,7 @@ android.permissions = INTERNET,VIBRATE,WAKE_LOCK
 #android.sdk = 20
 
 # (str) Android NDK version to use
-android.ndk = 23c
+android.ndk = 25b
 
 # (optional) Android build-tools version to use
 android.build_tools = 30.0.3
@@ -455,4 +455,5 @@ android.keystore = release.keystore
 android.keystore_password = 123456
 android.keyalias = mykey
 android.keyalias_password = 123456
+
 
