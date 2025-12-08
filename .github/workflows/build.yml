@@ -43,19 +43,19 @@ jobs:
         pip install --upgrade pip
         pip install buildozer "cython>=3.0.0" "setuptools<70"
 
-        # تنظیم API روی 33 (پایدار)
+        # تنظیم API روی 33
         sed -i 's/android.api = 34/android.api = 33/g' buildozer.spec
         if ! grep -q "android.api = 33" buildozer.spec; then
           sed -i 's/android.api = .*/android.api = 33/g' buildozer.spec
         fi
 
-        # تنظیم نسخه Kivy 2.3.0 و ملزومات
+        # تنظیم نیازمندی‌ها
         sed -i 's/^requirements =.*/requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,plyer,pyjnius/g' buildozer.spec
 
         # پذیرش لایسنس
         sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
 
-        # استفاده از شاخه مستر p4a برای سازگاری بهتر
+        # تنظیم شاخه p4a
         sed -i 's/#p4a.branch = master/p4a.branch = master/g' buildozer.spec
         if ! grep -q "p4a.branch = master" buildozer.spec; then
           echo "p4a.branch = master" >> buildozer.spec
@@ -63,16 +63,17 @@ jobs:
 
     - name: Build APK with Buildozer
       run: |
-        # پاکسازی متغیرهای محیطی سیستم که به NDK نسخه 27 (ناسازگار) اشاره دارند
+        # --- اصلاح حیاتی: حذف تمام متغیرهای محیطی سیستم ---
         unset ANDROID_NDK_HOME
         unset ANDROID_NDK_ROOT
         unset ANDROID_NDK
         unset ANDROID_SDK_ROOT
+        unset ANDROID_HOME      # <--- این خط جدید اضافه شد
         
-        # پاک کردن پوشه‌های قبلی برای شروع تمیز
+        # پاکسازی برای شروع تمیز
         rm -rf .buildozer
         
-        # اجرا - بیلدوزر خودش NDK r25b را دانلود و استفاده خواهد کرد
+        # اجرا
         buildozer -v android debug
 
     - name: Upload APK Artifacts
