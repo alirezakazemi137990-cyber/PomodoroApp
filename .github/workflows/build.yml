@@ -14,7 +14,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # تنظیم جاوا ۱۷ (حیاتی برای SDK های جدید)
+    # جاوا ۱۷ برای بیلد تولزهای جدید الزامی است
     - name: Set up JDK 17
       uses: actions/setup-java@v3
       with:
@@ -26,16 +26,13 @@ jobs:
       with:
         python-version: '3.10'
 
-    # نصب پکیج‌های سیستمی (لیست کامل شده)
+    # لیست کامل و جامع پیش‌نیازها برای کامپایل پایتون و کیوی
     - name: Install System Dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y \
-          python3-pip \
           build-essential \
           git \
-          python3 \
-          python3-dev \
           ffmpeg \
           libsdl2-dev \
           libsdl2-image-dev \
@@ -49,6 +46,14 @@ jobs:
           libgstreamer1.0 \
           gstreamer1.0-plugins-base \
           gstreamer1.0-plugins-good \
+          libffi-dev \
+          libssl-dev \
+          libncurses5-dev \
+          libsqlite3-dev \
+          libreadline-dev \
+          libbz2-dev \
+          liblzma-dev \
+          tk-dev \
           autoconf \
           automake \
           libtool \
@@ -60,13 +65,15 @@ jobs:
     - name: Install Buildozer and Cython
       run: |
         pip install --upgrade pip
+        # نصب نسخه پایدار سایکلون برای کیوی
         pip install buildozer cython==0.29.36
 
     - name: Build APK with Buildozer
       run: |
+        # استفاده از yes برای قبول کردن لایسنس‌ها به صورت خودکار
         yes | buildozer android debug
       env:
-        # متغیرهای محیطی برای اطمینان از مسیرهای درست
+        # تنظیم مسیرهای SDK و NDK برای جلوگیری از دانلود تکراری یا اشتباه
         ANDROIDSDK: /home/runner/.buildozer/android/platform/android-sdk
         ANDROIDNDK: /home/runner/.buildozer/android/platform/android-ndk-r25b
 
