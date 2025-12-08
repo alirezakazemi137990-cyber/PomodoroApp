@@ -25,7 +25,7 @@ jobs:
       with:
         python-version: '3.10'
 
-    # نصب وابستگی‌های سیستمی (لیست کامل و تست شده)
+    # نصب پکیج‌های سیستمی ضروری
     - name: Install System Dependencies
       run: |
         sudo apt-get update
@@ -42,26 +42,31 @@ jobs:
     - name: Configure Buildozer and Dependencies
       run: |
         pip install --upgrade pip
-        # 1. نصب Cython قدیمی و پایدار (مخصوص Kivy 2.2.1)
-        pip install buildozer "cython==0.29.36"
+        # نصب Cython جدید برای سازگاری با Kivy 2.3.0
+        pip install buildozer "cython>=3.0.0" "setuptools<70"
 
-        # 2. اصلاح فایل buildozer.spec با دستورات sed (بدون نیاز به ویرایش دستی فایل)
-        # تغییر نسخه Kivy به 2.2.1 که بسیار پایدارتر است
-        sed -i 's/kivy==2.3.0/kivy==2.2.1/g' buildozer.spec
+        # --- اصلاحات خودکار buildozer.spec ---
         
-        # اگر در فایل spec نسخه kivymd مشخص نشده، آن را اضافه می‌کنیم
-        sed -i 's/requirements = python3,kivy,kivymd,pillow,plyer/requirements = python3,kivy==2.2.1,kivymd==1.2.0,pillow,plyer,pyjnius/g' buildozer.spec
+        # 1. تنظیم کتابخانه‌های مدرن (Kivy 2.3.0, KivyMD 1.2.0)
+        # این خط کل نیازمندی‌ها را بازنویسی می‌کند تا از نسخه‌های صحیح مطمئن شویم
+        sed -i 's/^requirements =.*/requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,plyer,pyjnius/g' buildozer.spec
         
-        # تنظیم پذیرش خودکار لایسنس‌ها (جایگزین yes |)
+        # 2. پذیرش لایسنس به صورت خودکار در فایل کانفیگ (جلوگیری از نیاز به yes)
         sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
         
-        # اطمینان از اینکه P4A از شاخه master استفاده نمی‌کند (برای پایداری)
-        sed -i 's/p4a.branch = master/#p4a.branch = master/g' buildozer.spec
+        # 3. فعال‌سازی شاخه master برای P4A (الزامی برای Kivy 2.3.0)
+        # اگر خط کامنت شده باشد، آن را از کامنت در می‌آورد
+        sed -i 's/#p4a.branch = master/p4a.branch = master/g' buildozer.spec
+        # محض اطمینان، اگر خط وجود نداشت یا قبلاً فعال بود، یک بار دیگر چک می‌کنیم
+        if ! grep -q "p4a.branch = master" buildozer.spec; then
+          echo "p4a.branch = master" >> buildozer.spec
+        fi
 
     - name: Build APK with Buildozer
       run: |
-        # حذف yes | چون در مرحله قبل لایسنس را در کانفیگ تایید کردیم
-        # این کار باعث می‌شود اگر خطایی رخ داد، دقیقا متن خطا را ببینیم نه Broken pipe
+        # حذف yes | و استفاده از تنظیمات اعمال شده
+        # حذف پوشه بیلدوزر برای اطمینان از بیلد تمیز
+        rm -rf .buildozer
         buildozer -v android debug
       env:
         ANDROIDSDK: /home/runner/.buildozer/android/platform/android-sdk
