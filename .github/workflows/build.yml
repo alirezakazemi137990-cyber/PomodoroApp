@@ -63,18 +63,25 @@ jobs:
 
     - name: Build APK with Buildozer
       run: |
-        # --- اصلاح حیاتی: حذف تمام متغیرهای محیطی سیستم ---
+        # --- پاکسازی کامل متغیرهای محیطی سیستم ---
+        # حذف اشاره‌گرهای NDK و SDK سیستم (نسخه‌های ناسازگار)
         unset ANDROID_NDK_HOME
         unset ANDROID_NDK_ROOT
         unset ANDROID_NDK
         unset ANDROID_SDK_ROOT
-        unset ANDROID_HOME      # <--- این خط جدید اضافه شد
+        unset ANDROID_HOME
+        unset ANDROID_NDK_LATEST_HOME   # <--- متغیر مخفی که در لاگ قبلی کشف شد
         
-        # پاکسازی برای شروع تمیز
+        # حذف متغیرهای جاوای جدیدتر برای جلوگیری از تداخل با JDK 17
+        unset JAVA_HOME_21_X64
+        unset JAVA_HOME_25_X64
+        
+        # پاکسازی کش بیلد برای شروع تمیز
         rm -rf .buildozer
         
-        # اجرا
-        buildozer -v android debug
+        # اجرای بیلد با دستور yes برای تایید خودکار لایسنس‌ها (محض اطمینان)
+        yes | buildozer -v android debug
+
 
     - name: Upload APK Artifacts
       uses: actions/upload-artifact@v4
