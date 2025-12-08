@@ -1,87 +1,38 @@
-name: Build Kivy APK with Buildozer
+name: Build Android APK
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
 
 jobs:
-  build-android:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
-      - name: Set up Python 3.9
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.10'
 
-      - name: Set up Java JDK 11
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '11'
-
-      - name: Install Android commandline tools and SDK components
+      - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget unzip
-          export ANDROID_SDK_ROOT=$HOME/android-sdk
-          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
-          cd $ANDROID_SDK_ROOT/cmdline-tools
-          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline.zip
-          unzip -q cmdline.zip
-          rm cmdline.zip
-          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/latest
-          if [ -d "$ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools" ]; then
-            mv $ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools/* $ANDROID_SDK_ROOT/cmdline-tools/latest/
-          else
-            mv $ANDROID_SDK_ROOT/cmdline-tools/* $ANDROID_SDK_ROOT/cmdline-tools/latest/ || true
-          fi
-          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH
-          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT --licenses
-          $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platform-tools" "platforms;android-33" "build-tools;36.1.0"
+          sudo apt-get install -y build-essential libltdl-dev libffi-dev libssl-dev git zip unzip autoconf libtool pkg-config zlib1g-dev
 
-      - name: Install git buildozer and system deps
+      - name: Install Buildozer and Cython
         run: |
-          sudo apt-get update
-          sudo apt-get install -y git zip unzip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev cmake libffi-dev libssl-dev
-          python -m pip install --upgrade pip
-          pip install "cython<3.0"
-          pip install buildozer
+          pip install --upgrade pip
+          pip install buildozer cython==0.29.33
 
-      - name: Build with Buildozer debug
-        env:
-          ANDROID_HOME: $HOME/android-sdk
-          ANDROID_SDK_ROOT: $HOME/android-sdk
-          PATH: $HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH
+      - name: Build APK with Buildozer
         run: |
-          buildozer -v android debug
+          # The 'yes' command automatically accepts the license agreement
+          yes | buildozer -v android debug
 
-      - name: Upload APK artifacts
+      - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: pomopulse-apk
-          path: |
-            bin/*.apk
-            ./.buildozer/android/platform/build/dists/**/bin/*.apk
-            ./.buildozer/android/platform/build/outputs/**/*.apk
-
- --- اگر می‌خواهی release-signed برای گوگل‌پلی بسازی، این بلوک را فعال کن و مقادیر keystore را در Secrets قرار بده:
-      - name: Build release signed AAB
-        env:
-          ANDROID_HOME: $HOME/android-sdk
-          ANDROID_SDK_ROOT: $HOME/android-sdk
-          PATH: $HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: |
-          echo "$KEYSTORE_BASE64" | base64 --decode > mykeystore.jks
-          # تنظیمات امضا را در buildozer.spec اضافه کن یا از دستور زیر استفاده کن
-#          buildozer android release
-#          jarsigner -keystore mykeystore.jks -storepass "$KEYSTORE_PASSWORD" bin/*.apk "$KEY_ALIAS"
-#          zipalign -v -p 4 bin/*.apk bin/*-aligned.apk
+          name: pomopulse-debug
+          path: bin/*.apk
