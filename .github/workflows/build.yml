@@ -25,51 +25,35 @@ jobs:
       with:
         python-version: '3.10'
 
-    # نصب تمام پیش‌نیازهای سیستمی برای کامپایل پایتون و کیوی
+    # نصب پکیج‌های سیستمی (لیست کامل برای جلوگیری از خطای کامپایل)
     - name: Install System Dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y \
-          build-essential \
-          git \
-          ffmpeg \
-          libsdl2-dev \
-          libsdl2-image-dev \
-          libsdl2-mixer-dev \
-          libsdl2-ttf-dev \
-          libportmidi-dev \
-          libswscale-dev \
-          libavformat-dev \
-          libavcodec-dev \
-          zlib1g-dev \
-          libgstreamer1.0 \
-          gstreamer1.0-plugins-base \
-          gstreamer1.0-plugins-good \
-          libffi-dev \
-          libssl-dev \
-          libncurses5-dev \
-          libsqlite3-dev \
-          libreadline-dev \
-          libbz2-dev \
-          liblzma-dev \
-          tk-dev \
-          autoconf \
-          automake \
-          libtool \
-          pkg-config \
-          cmake \
-          zip \
-          unzip
+          build-essential git ffmpeg \
+          libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
+          libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev \
+          zlib1g-dev libgstreamer1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+          libffi-dev libssl-dev libncurses5-dev libsqlite3-dev \
+          libreadline-dev libbz2-dev liblzma-dev tk-dev \
+          autoconf automake libtool pkg-config cmake zip unzip \
+          libjpeg-dev libfreetype6-dev libltdl-dev
 
-    - name: Install Buildozer and Cython
+    - name: Fix Buildozer Spec & Install Tools
       run: |
+        # اصلاح خودکار فایل تنظیمات برای استفاده از آخرین نسخه P4A
+        # این خط مطمئن می‌شود که شاخه master فعال است تا با Kivy 2.3.0 سازگار باشد
+        sed -i 's/#p4a.branch = master/p4a.branch = master/' buildozer.spec
+        
         pip install --upgrade pip
-        # اصلاح حیاتی: نصب نسخه جدید Cython برای سازگاری با Kivy 2.3.0
-        pip install buildozer "cython>=3.0.0"
+        # نصب نسخه خاص setuptools برای جلوگیری از باگ‌های جدید
+        # نصب Cython 3 برای سازگاری با Kivy 2.3.0
+        pip install buildozer "cython>=3.0.0" "setuptools<70"
 
     - name: Build APK with Buildozer
       run: |
-        # استفاده از فلگ -v برای لاگ‌های دقیق‌تر
+        # استفاده از yes برای رد کردن سوالات لایسنس
+        # فلگ verbose برای دیدن جزئیات در صورت خطا
         yes | buildozer -v android debug
       env:
         ANDROIDSDK: /home/runner/.buildozer/android/platform/android-sdk
