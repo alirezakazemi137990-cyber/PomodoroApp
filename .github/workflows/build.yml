@@ -14,13 +14,12 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # --- این بخش جدید اضافه شده است: تنظیم اجباری جاوا ۱۷ ---
+    # تنظیم اجباری جاوا ۱۷ برای جلوگیری از ارور نسخه ۶۵
     - name: Set up JDK 17
       uses: actions/setup-java@v3
       with:
         java-version: '17'
         distribution: 'temurin'
-    # -------------------------------------------------------
 
     - name: Setup Python
       uses: actions/setup-python@v4
@@ -57,12 +56,9 @@ jobs:
 
     - name: Build APK with Buildozer
       run: |
-        # پاکسازی بیلدهای قبلی برای جلوگیری از کش معیوب
-        buildozer android clean
-        # دستور بیلد با تنظیمات verbose برای دیدن لاگ کامل
         yes | buildozer android debug
       env:
-        # تنظیم متغیرهای محیطی برای اطمینان از پیدا شدن SDK/NDK
+        # متغیرهای محیطی برای اطمینان از مسیرهای درست
         ANDROIDSDK: /home/runner/.buildozer/android/platform/android-sdk
         ANDROIDNDK: /home/runner/.buildozer/android/platform/android-ndk-r25b
 
