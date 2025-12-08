@@ -25,7 +25,6 @@ jobs:
       with:
         python-version: '3.10'
 
-    # نصب وابستگی‌ها (نسخه اصلاح شده که ارور ندهد)
     - name: Install System Dependencies
       run: |
         sudo apt-get update
@@ -50,13 +49,13 @@ jobs:
           sed -i 's/android.api = .*/android.api = 33/g' buildozer.spec
         fi
 
-        # تنظیم نسخه Kivy و KivyMD
+        # تنظیم نسخه Kivy 2.3.0 و ملزومات
         sed -i 's/^requirements =.*/requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,plyer,pyjnius/g' buildozer.spec
 
         # پذیرش لایسنس
         sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
 
-        # تنظیم شاخه master برای p4a
+        # استفاده از شاخه مستر p4a برای سازگاری بهتر
         sed -i 's/#p4a.branch = master/p4a.branch = master/g' buildozer.spec
         if ! grep -q "p4a.branch = master" buildozer.spec; then
           echo "p4a.branch = master" >> buildozer.spec
@@ -64,10 +63,20 @@ jobs:
 
     - name: Build APK with Buildozer
       run: |
+        # پاکسازی متغیرهای محیطی سیستم که به NDK نسخه 27 (ناسازگار) اشاره دارند
+        unset ANDROID_NDK_HOME
+        unset ANDROID_NDK_ROOT
+        unset ANDROID_NDK
+        unset ANDROID_SDK_ROOT
+        
+        # پاک کردن پوشه‌های قبلی برای شروع تمیز
         rm -rf .buildozer
+        
+        # اجرا - بیلدوزر خودش NDK r25b را دانلود و استفاده خواهد کرد
         buildozer -v android debug
-      env:
-        # --- بخش حیاتی: خنثی‌سازی NDK پیش‌فرض سیستم ---
-        # این خطوط به بیلدوزر می‌گویند فقط به مسیری که خودش دانلود کرده نگاه کند
-        # و NDK نسخه 27 سیستم را نادیده بگیرد.
-        ANDROID_NDK_HOME: /home
+
+    - name: Upload APK Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: package
+        path: bin/*.apk
