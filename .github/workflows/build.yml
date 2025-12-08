@@ -25,6 +25,7 @@ jobs:
       with:
         python-version: '3.10'
 
+    # نصب وابستگی‌ها (نسخه اصلاح شده که ارور ندهد)
     - name: Install System Dependencies
       run: |
         sudo apt-get update
@@ -43,13 +44,13 @@ jobs:
         pip install --upgrade pip
         pip install buildozer "cython>=3.0.0" "setuptools<70"
 
-        # تنظیم API روی 33
+        # تنظیم API روی 33 (پایدار)
         sed -i 's/android.api = 34/android.api = 33/g' buildozer.spec
         if ! grep -q "android.api = 33" buildozer.spec; then
           sed -i 's/android.api = .*/android.api = 33/g' buildozer.spec
         fi
 
-        # تنظیم نسخه Kivy 2.3.0
+        # تنظیم نسخه Kivy و KivyMD
         sed -i 's/^requirements =.*/requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,plyer,pyjnius/g' buildozer.spec
 
         # پذیرش لایسنس
@@ -66,11 +67,7 @@ jobs:
         rm -rf .buildozer
         buildozer -v android debug
       env:
-        ANDROIDSDK: /home/runner/.buildozer/android/platform/android-sdk
-        ANDROIDNDK: /home/runner/.buildozer/android/platform/android-ndk-r25b
-
-    - name: Upload APK Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: package
-        path: bin/*.apk
+        # --- بخش حیاتی: خنثی‌سازی NDK پیش‌فرض سیستم ---
+        # این خطوط به بیلدوزر می‌گویند فقط به مسیری که خودش دانلود کرده نگاه کند
+        # و NDK نسخه 27 سیستم را نادیده بگیرد.
+        ANDROID_NDK_HOME: /home
