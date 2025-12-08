@@ -25,11 +25,12 @@ jobs:
       with:
         python-version: '3.10'
 
+    # اضافه شدن gettext و gperf برای حل مشکلات کامپایل احتمالی
     - name: Install System Dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y \
-          build-essential git ffmpeg \
+          build-essential git ffmpeg gettext gperf \
           libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
           libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev \
           zlib1g-dev libltdl-dev \
@@ -55,16 +56,11 @@ jobs:
         # پذیرش لایسنس
         sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
 
-        # تنظیم شاخه p4a
-        sed -i 's/#p4a.branch = master/p4a.branch = master/g' buildozer.spec
-        if ! grep -q "p4a.branch = master" buildozer.spec; then
-          echo "p4a.branch = master" >> buildozer.spec
-        fi
+        # نکته: حذف اجبار p4a.branch = master برای جلوگیری از ناپایداری
 
     - name: Build APK with Buildozer
       run: |
         # --- پاکسازی کامل متغیرهای محیطی سیستم ---
-        # این کار بیلدوزر را مجبور می‌کند فقط از نسخه صحیح NDK/SDK خودش استفاده کند
         unset ANDROID_NDK_HOME
         unset ANDROID_NDK_ROOT
         unset ANDROID_NDK
@@ -72,17 +68,14 @@ jobs:
         unset ANDROID_HOME
         unset ANDROID_NDK_LATEST_HOME
         
-        # حذف متغیرهای جاوای مزاحم
         unset JAVA_HOME_21_X64
         unset JAVA_HOME_25_X64
         
-        # پاکسازی کش برای اطمینان
         rm -rf .buildozer
         
-        # اجرای بیلد بدون yes (لایسنس در buildozer.spec تایید شده است)
-        buildozer -v android debug
-
-
+        # استفاده از yes برای تایید دانلودهای احتمالی buildozer (مثل NDK)
+        # استفاده از echo y | امن‌تر از yes | خالی است چون لوپ بی‌نهایت نمی‌سازد
+        echo "y" | buildozer -v android debug
 
     - name: Upload APK Artifacts
       uses: actions/upload-artifact@v4
