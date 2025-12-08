@@ -20,6 +20,10 @@ from plyer import notification
 from kivymd.uix.label import MDLabel  
 from kivymd.uix.card import MDCard     
 from kivymd.uix.textfield import MDTextField 
+from datetime import datetime, timedelta
+import random  # برای انتخاب جمله تصادفی
+from kivy.utils import platform  # برای تشخیص اندروید یا ویندوز
+from plyer import vibrator  # برای ویبره موبایل
 
 # ==========================================
 # 1. طراحی رابط کاربری (KV Layout)
@@ -62,7 +66,6 @@ KV = '''
             id: task_input
             hint_text: "Task Name"
             mode: "rectangle"
-            # فونت‌های فارسی حذف شدند تا از فونت پیش‌فرض استفاده شود
 
         # --- Timer Display ---
         MDLabel:
@@ -89,6 +92,19 @@ KV = '''
             halign: "center"
             theme_text_color: "Hint"
             font_style: "Caption"
+
+        # >>> بخش جدید: نمایش جمله انگیزشی <<<
+        MDLabel:
+            text: root.quote_text
+            halign: "center"
+            theme_text_color: "Custom"
+            text_color: 0.2, 0.6, 1, 1
+            font_style: "Caption"
+            font_size: "14sp"
+            italic: True
+            size_hint_y: None
+            height: dp(30)
+        # --------------------------------------
 
         # --- Controls ---
         MDBoxLayout:
@@ -358,228 +374,8 @@ KV = '''
                 on_release: root.save_profile()
 
         Widget: 
-
-<SettingsScreen>:
-    name: "settings"
-    MDBoxLayout:
-        orientation: 'vertical'
-        padding: dp(20)
-        spacing: dp(10)
-        
-        MDLabel:
-            text: "Settings"
-            font_style: "H5"
-            halign: "center"
-            
-        MDTextField:
-            id: work_min
-            hint_text: "Work Duration (min)"
-            input_filter: "int"
-            text: str(app.config_engine.work_min)
-            
-        MDTextField:
-            id: short_break
-            hint_text: "Short Break (min)"
-            input_filter: "int"
-            text: str(app.config_engine.short_break_min)
-            
-        MDTextField:
-            id: long_break
-            hint_text: "Long Break (min)"
-            input_filter: "int"
-            text: str(app.config_engine.long_break_min)
-
-        MDLabel:
-            text: "Theme Color"
-            theme_text_color: "Secondary"
-        
-        ScrollView:
-            MDList:
-                id: theme_list
-
-        MDRaisedButton:
-            text: "SAVE & RETURN"
-            pos_hint: {"center_x": .5}
-            on_release: root.save_settings()
-
-<StatsScreen>:
-    name: "stats"
-    MDBoxLayout:
-        orientation: 'vertical'
-        padding: dp(20)
-        
-        MDLabel:
-            text: "Analytics"
-            font_style: "H5"
-            halign: "center"
-            size_hint_y: None
-            height: dp(50)
-
-        MDBoxLayout:
-            adaptive_height: True
-            spacing: dp(10)
-            padding: dp(10)
-            
-            MDRectangleFlatButton:
-                text: "Daily"
-                on_release: root.load_stats("Daily")
-            MDRectangleFlatButton:
-                text: "Weekly"
-                on_release: root.load_stats("Weekly")
-            MDRectangleFlatButton:
-                text: "Monthly"
-                on_release: root.load_stats("Monthly")
-
-        # Summary Cards
-        MDBoxLayout:
-            adaptive_height: True
-            padding: dp(5)
-            spacing: dp(5)
-            
-            # کارت 1: زمان کل
-            MDCard:
-                orientation: "vertical"
-                padding: dp(5)
-                size_hint: 0.33, None
-                height: dp(80)
-                radius: [15]
-                MDLabel:
-                    id: lbl_total_time
-                    text: "0h 0m"
-                    halign: "center"
-                    bold: True
-                    font_style: "H6"
-                MDLabel:
-                    text: "Total Focus"
-                    halign: "center"
-                    font_style: "Overline"
-            
-            # کارت 2: سشن‌های کامل
-            MDCard:
-                orientation: "vertical"
-                padding: dp(5)
-                size_hint: 0.33, None
-                height: dp(80)
-                radius: [15]
-                MDLabel:
-                    id: lbl_sessions
-                    text: "0"
-                    halign: "center"
-                    bold: True
-                    font_style: "H6"
-                    theme_text_color: "Custom"
-                    text_color: 0, 0.7, 0, 1
-                MDLabel:
-                    text: "Completed"
-                    halign: "center"
-                    font_style: "Overline"
-
-            # کارت 3: سشن‌های اسکیپ شده (جدید)
-            MDCard:
-                orientation: "vertical"
-                padding: dp(5)
-                size_hint: 0.33, None
-                height: dp(80)
-                radius: [15]
-                MDLabel:
-                    id: lbl_skipped
-                    text: "0"
-                    halign: "center"
-                    bold: True
-                    font_style: "H6"
-                    theme_text_color: "Custom"
-                    text_color: 1, 0.6, 0, 1
-                MDLabel:
-                    text: "Skipped"
-                    halign: "center"
-                    font_style: "Overline"
-
-        ScrollView:
-            MDBoxLayout:
-                id: stats_list
-                orientation: 'vertical'
-                adaptive_height: True
-                padding: [dp(10), dp(10)]
-                spacing: dp(15)
-
-        MDRaisedButton:
-            text: "BACK"
-            pos_hint: {"center_x": .5}
-            on_release: app.switch_screen("home")
-
-<ProfileScreen>:
-    name: "profile"
-    MDBoxLayout:
-        orientation: 'vertical'
-        padding: dp(20)
-        spacing: dp(20)
-
-        # فضای خالی بالا برای هل دادن کارت به وسط
-        Widget: 
-        
-        MDCard:
-            orientation: "vertical"
-            size_hint: None, None
-            size: dp(320), dp(400)
-            pos_hint: {"center_x": .5, "center_y": .5}
-            elevation: 4
-            padding: dp(25)
-            spacing: dp(20)
-            radius: [20, 20, 20, 20]
-
-            MDLabel:
-                text: "User Profile"
-                font_style: "H5"
-                halign: "center"
-                theme_text_color: "Primary"
-                size_hint_y: None
-                height: dp(40)
-
-            # آواتار بزرگ
-            MDIcon:
-                icon: "account-circle"
-                halign: "center"
-                font_size: "80sp"
-                theme_text_color: "Custom"
-                text_color: app.theme_cls.primary_color
-                size_hint_y: None
-                height: dp(100)
-
-            MDTextField:
-                id: user_name
-                hint_text: "Display Name"
-                text: app.config_engine.user_name
-                icon_right: "account-edit"
-                mode: "fill"
-            
-            MDTextField:
-                id: user_title
-                hint_text: "Job Title / Tagline"
-                text: app.config_engine.user_title
-                icon_right: "briefcase-edit"
-                mode: "fill"
-
-        # دکمه‌ها پایین صفحه
-        MDBoxLayout:
-            adaptive_height: True
-            spacing: dp(20)
-            pos_hint: {"center_x": .5}
-            padding: [0, dp(20), 0, 0]
-
-            MDFlatButton:
-                text: "CANCEL"
-                text_color: 1, 0, 0, 1
-                on_release: app.switch_screen("home")
-            
-            MDRaisedButton:
-                text: "SAVE PROFILE"
-                elevation: 2
-                on_release: root.save_profile()
-
-        Widget: # فضای خالی پایین
-
-
 '''
+
 
 # ==========================================
 # 2. منطق برنامه (Logic Engine)
@@ -587,7 +383,7 @@ KV = '''
 class PomodoroConfig:
     def __init__(self):
         self.config = configparser.ConfigParser()
-        
+
         # --- تشخیص مسیر ذخیره‌سازی (سازگار با اندروید و ویندوز) ---
         from kivy.utils import platform
         if platform == 'android':
@@ -603,7 +399,23 @@ class PomodoroConfig:
         self.filename = os.path.join(self.data_dir, 'config.ini')
         self.history_file = os.path.join(self.data_dir, 'pomodoro_history.csv')
         # -------------------------------------------------------
-        
+
+        # +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        # >>> بخش جدید: لیست جملات انگیزشی <<<
+        self.quotes = [
+            "Stay hungry, stay foolish.",
+            "Focus on being productive instead of busy.",
+            "The secret of getting ahead is getting started.",
+            "It always seems impossible until it's done.",
+            "Don't watch the clock; do what it does. Keep going.",
+            "Success is the sum of small efforts, repeated day in and day out.",
+            "Great things never come from comfort zones.",
+            "Dream big. Work hard. Stay humble.",
+            "Believe you can and you're halfway there.",
+            "Future , keep pushing!",
+        ]
+        # +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
         self._load_config()
 
     def _load_config(self):
@@ -653,17 +465,15 @@ class PomodoroConfig:
             return {"bar_data": [], "pie_data": {}, "total_count": 0, "skipped_count": 0, "total_mins": 0}
 
         grand_total_mins = 0
-        grand_total_count = 0 # فقط سشن‌های کامل
-        skipped_count = 0      # سشن‌های اسکیپ شده
+        grand_total_count = 0 
+        skipped_count = 0      
         
-        # ساختار داده برای نمودار میله‌ای و دایره‌ای
         timeline_data = {} 
         task_distribution = {}
 
         now = datetime.now()
         labels = []
         
-        # تنظیم بازه زمانی
         if timeframe == "Daily":
             for i in range(6, -1, -1):
                 day = now - timedelta(days=i)
@@ -700,8 +510,6 @@ class PomodoroConfig:
                 for row in reader:
                     if len(row) < 4: continue
                     session_type = row[1]
-                    
-                    # فقط کارهایی که با Work شروع می‌شوند (شامل Work و Work (Early))
                     if not session_type.startswith("Work"): continue
                     
                     try:
@@ -711,31 +519,25 @@ class PomodoroConfig:
                         task_name = row[3] if row[3] else "General"
                     except: continue
                     
-                    # جداسازی منطق شمارش
                     if session_type == "Work":
-                        grand_total_count += 1 # فقط کامل‌ها
+                        grand_total_count += 1 
                     else:
-                        skipped_count += 1     # اسکیپ شده‌ها (Work (Early))
+                        skipped_count += 1     
 
                     grand_total_mins += duration
-                    
-                    # داده‌های نمودار دایره‌ای
                     task_distribution[task_name] = task_distribution.get(task_name, 0) + duration
 
-                    # کلید زمانی
                     key = ""
                     if timeframe == "Daily": key = date_str
                     elif timeframe == "Weekly": key = dt.strftime("%U")
                     elif timeframe == "Monthly": key = dt.strftime("%Y-%m")
 
-                    # داده‌های نمودار میله‌ای
                     if key in timeline_data:
                         timeline_data[key][task_name] = timeline_data[key].get(task_name, 0) + duration
 
         except Exception as e:
             print(f"Error reading stats: {e}")
 
-        # تبدیل به لیست نهایی برای رسم
         bar_chart_data = []
         for key, display_label in labels:
             day_tasks = timeline_data.get(key, {})
@@ -754,7 +556,6 @@ class PomodoroConfig:
             "total_mins": grand_total_mins
         }
 
-
     def save_config(self):
         self.config['SETTINGS']['work_minutes'] = str(self.work_min)
         self.config['SETTINGS']['short_break'] = str(self.short_break_min)
@@ -767,6 +568,8 @@ class PomodoroConfig:
             self.config.write(configfile)
 
 
+
+
 # ==========================================
 # 3. کلاس‌های صفحات (Screens)
 # ==========================================
@@ -776,6 +579,9 @@ class HomeScreen(MDScreen):
     greeting_text = StringProperty("")
     user_title_text = StringProperty("")
     cycle_text = StringProperty("Cycle: 0/4")
+    # >>> متغیر جدید برای متن جمله <<<
+    quote_text = StringProperty("Let's make it happen!")
+    
     progress_value = NumericProperty(0)
     timer_running = BooleanProperty(False)
     is_work_time = BooleanProperty(True)
@@ -788,7 +594,6 @@ class HomeScreen(MDScreen):
         self.reset_state()
 
     def on_enter(self):
-        # حذف f()
         self.greeting_text = f"Hi, {self.cfg.user_name}"
         self.user_title_text = self.cfg.user_title
         current = self.cycles_completed + 1 if self.cycles_completed < self.cfg.cycles_limit else self.cfg.cycles_limit
@@ -814,7 +619,6 @@ class HomeScreen(MDScreen):
 
     def toggle_timer(self):
         raw_task = self.ids.task_input.text.strip()
-        
         if not raw_task:
             self.ids.task_input.error = True
             return
@@ -822,7 +626,13 @@ class HomeScreen(MDScreen):
 
         if not self.timer_running:
             self.timer_running = True
-            self.clock_event = Clock.schedule_interval(self.update_clock, 1)
+            
+            # >>> انتخاب جمله انگیزشی تصادفی <<<
+            self.quote_text = random.choice(self.cfg.quotes)
+
+            # محاسبه لحظه پایان (Delta Time Logic)
+            self.end_time = datetime.now() + timedelta(seconds=self.time_left)
+            self.clock_event = Clock.schedule_interval(self.update_clock, 0.5)
             self.status_text = "Focusing..."
         else:
             self.timer_running = False
@@ -830,13 +640,20 @@ class HomeScreen(MDScreen):
             self.status_text = "Paused"
 
     def update_clock(self, dt):
-        if self.time_left > 0:
-            self.time_left -= 1
-            self.update_display_time()
-            elapsed = self.total_time_session - self.time_left
-            self.progress_value = (elapsed / self.total_time_session) * 100
-        else:
-            self.finish_session()
+        if self.timer_running:
+            now = datetime.now()
+            remaining = self.end_time - now
+            seconds_left = int(remaining.total_seconds())
+
+            if seconds_left > 0:
+                self.time_left = seconds_left
+                self.update_display_time()
+                elapsed = self.total_time_session - self.time_left
+                if self.total_time_session > 0:
+                    self.progress_value = (elapsed / self.total_time_session) * 100
+            else:
+                self.time_left = 0
+                self.finish_session()
 
     def finish_early(self):
         if not self.timer_running: return
@@ -850,9 +667,21 @@ class HomeScreen(MDScreen):
         if self.clock_event: self.clock_event.cancel()
         self.progress_value = 100 if not is_early else self.progress_value
         
+        # --- بخش صدا و ویبره ---
         try:
-            notification.notify(title="PomoPulse", message="Session Ended", timeout=5)
-        except: pass
+            # ویبره (فقط اندروید)
+            if platform == 'android':
+                vibrator.vibrate(1) # 1 ثانیه
+            
+            # بوق (ویندوز)
+            if platform == 'win':
+                import winsound
+                winsound.Beep(2500, 1000)
+            
+            notification.notify(title="PomoPulse", message="Session Ended! ⏰", timeout=5)
+        except Exception as e:
+            print(f"Alarm Error: {e}")
+        # -----------------------
 
         task_name = self.ids.task_input.text.strip() or "General"
         duration_to_log = manual_duration if manual_duration is not None else self.cfg.work_min
@@ -881,6 +710,7 @@ class HomeScreen(MDScreen):
         self.total_time_session = self.time_left
         self.update_display_time()
         if not is_early: self.progress_value = 0
+
 
 
 
@@ -1050,6 +880,9 @@ class ProfileScreen(MDScreen):
 # ==========================================
 # 4. کلاس اصلی اپلیکیشن
 # ==========================================
+# ==========================================
+# 4. کلاس اصلی اپلیکیشن
+# ==========================================
 class PomoPulseApp(MDApp):
 
     def build(self):
@@ -1071,6 +904,32 @@ class PomoPulseApp(MDApp):
         
         return self.sm
 
+    def on_start(self):
+        """
+        این متد بلافاصله بعد از build اجرا می‌شود.
+        ما اینجا دستور روشن ماندن صفحه را برای اندروید صادر می‌کنیم.
+        """
+        from kivy.utils import platform
+        
+        # فعال‌سازی Wake Lock فقط برای اندروید
+        if platform == 'android':
+            try:
+                from jnius import autoclass
+                from android.runnable import run_on_ui_thread
+
+                @run_on_ui_thread
+                def add_keep_screen_on_flag():
+                    PythonActivity = autoclass('org.kivy.android.PythonActivity')
+                    activity = PythonActivity.mActivity
+                    WindowManager = autoclass('android.view.WindowManager')
+                    
+                    # اضافه کردن فلگ FLAG_KEEP_SCREEN_ON
+                    window = activity.getWindow()
+                    window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+                add_keep_screen_on_flag()
+            except Exception as e:
+                print(f"WakeLock Error: {e}")
 
     def switch_screen(self, screen_name):
         self.sm.current = screen_name
