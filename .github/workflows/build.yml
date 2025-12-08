@@ -8,7 +8,8 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # تغییر مهم: استفاده از نسخه 22.04 بجای latest (که 24.04 است و خطا می‌دهد)
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Checkout code
@@ -25,7 +26,6 @@ jobs:
       with:
         python-version: '3.10'
 
-    # نصب پکیج‌های سیستمی ضروری
     - name: Install System Dependencies
       run: |
         sudo apt-get update
@@ -42,33 +42,37 @@ jobs:
     - name: Configure Buildozer and Dependencies
       run: |
         pip install --upgrade pip
-        # نصب Cython جدید برای سازگاری با Kivy 2.3.0
         pip install buildozer "cython>=3.0.0" "setuptools<70"
 
-        # --- اصلاحات خودکار buildozer.spec ---
-        
-        # 1. تنظیم کتابخانه‌های مدرن (Kivy 2.3.0, KivyMD 1.2.0)
-        # این خط کل نیازمندی‌ها را بازنویسی می‌کند تا از نسخه‌های صحیح مطمئن شویم
+        # --- تنظیمات حیاتی فایل buildozer.spec ---
+
+        # 1. تنظیم API روی 33 (پایدارتر از 34)
+        sed -i 's/android.api = 34/android.api = 33/g' buildozer.spec
+        # اگر مقدار پیش‌فرض چیز دیگری بود، این خط اطمینان حاصل می‌کند
+        if ! grep -q "android.api = 33" buildozer.spec; then
+          sed -i 's/android.api = .*/android.api = 33/g' buildozer.spec
+        fi
+
+        # 2. تنظیم نسخه Kivy 2.3.0
         sed -i 's/^requirements =.*/requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,plyer,pyjnius/g' buildozer.spec
-        
-        # 2. پذیرش لایسنس به صورت خودکار در فایل کانفیگ (جلوگیری از نیاز به yes)
+
+        # 3. پذیرش لایسنس
         sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
-        
-        # 3. فعال‌سازی شاخه master برای P4A (الزامی برای Kivy 2.3.0)
-        # اگر خط کامنت شده باشد، آن را از کامنت در می‌آورد
+
+        # 4. تنظیم شاخه master برای p4a
         sed -i 's/#p4a.branch = master/p4a.branch = master/g' buildozer.spec
-        # محض اطمینان، اگر خط وجود نداشت یا قبلاً فعال بود، یک بار دیگر چک می‌کنیم
         if ! grep -q "p4a.branch = master" buildozer.spec; then
           echo "p4a.branch = master" >> buildozer.spec
         fi
 
     - name: Build APK with Buildozer
       run: |
-        # حذف yes | و استفاده از تنظیمات اعمال شده
-        # حذف پوشه بیلدوزر برای اطمینان از بیلد تمیز
+        # حذف پوشه قدیمی
         rm -rf .buildozer
+        # شروع بیلد بدون yes (چون لایسنس را در کانفیگ تایید کردیم)
         buildozer -v android debug
       env:
+        # مسیرهای SDK و NDK پیش‌فرض بیلدوزر را ست می‌کنیم تا گیج نشود
         ANDROIDSDK: /home/runner/.buildozer/android/platform/android-sdk
         ANDROIDNDK: /home/runner/.buildozer/android/platform/android-ndk-r25b
 
