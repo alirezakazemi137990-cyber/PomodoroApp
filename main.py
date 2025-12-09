@@ -15,17 +15,11 @@ from kivymd.uix.screenmanager import MDScreenManager
 from kivymd.uix.button import MDFlatButton, MDIconButton
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.progressbar import MDProgressBar
-from kivymd.uix.list import OneLineAvatarIconListItem, IconLeftWidget
-from plyer import notification, vibrator
-from kivymd.uix.label import MDLabel
+from kivymd.uix.list import TwoLineAvatarIconListItem, IconLeftWidget, IconRightWidget
 from kivymd.uix.card import MDCard
 from kivymd.uix.textfield import MDTextField
-
-# --- وارد کردن کتابخانه‌های صدا ---
-try:
-    import winsound
-except ImportError:
-    winsound = None
+from kivy.core.audio import SoundLoader
+from plyer import notification, vibrator
 
 # --- وارد کردن کتابخانه‌های اندروید برای Wake Lock ---
 if platform == 'android':
@@ -33,10 +27,44 @@ if platform == 'android':
     from android.runnable import run_on_ui_thread
 
 # ==========================================
+# 0. کلاس آیتم‌های چک‌لیست (Task Item Class)
+# ==========================================
+class TaskItem(TwoLineAvatarIconListItem):
+    def __init__(self, task_text, **kwargs):
+        super().__init__(**kwargs)
+        self.text = task_text
+        self.secondary_text = "Pending"
+        self._original_text = task_text
+    
+    def on_check_press(self):
+        if self.secondary_text == "Pending":
+            self.secondary_text = "Done"
+            self.text = f"[s]{self._original_text}[/s]" # خط کشیدن روی متن
+            self.ids._left_container.children[0].icon = "checkbox-marked-circle-outline"
+        else:
+            self.secondary_text = "Pending"
+            self.text = self._original_text
+            self.ids._left_container.children[0].icon = "checkbox-blank-circle-outline"
+
+    def delete_item(self):
+        self.parent.remove_widget(self)
+
+# ==========================================
 # 1. طراحی رابط کاربری (KV Layout)
 # ==========================================
 KV = '''
 #:import FadeTransition kivy.uix.screenmanager.FadeTransition
+
+# --- تمپلیت آیتم تسک ---
+<TaskItem>:
+    IconLeftWidget:
+        icon: "checkbox-blank-circle-outline"
+        on_release: root.on_check_press()
+
+    IconRightWidget:
+        icon: "trash-can-outline"
+        theme_text_color: "Error"
+        on_release: root.delete_item()
 
 <HomeScreen>:
     name: "home"
@@ -66,7 +94,7 @@ KV = '''
             orientation: "vertical"
             padding: dp(10)
             size_hint_y: None
-            height: dp(60)
+            height: dp(50)
             radius: [10]
             md_bg_color: 0.2, 0.2, 0.2, 1
             elevation: 0
@@ -80,42 +108,38 @@ KV = '''
                 valign: "center"
                 italic: True
 
-        # --- Task Input ---
-        MDTextField:
-            id: task_input
-            hint_text: "Task Name"
-            mode: "rectangle"
+        # --- Timer Display & Progress ---
+        MDBoxLayout:
+            orientation: 'vertical'
+            adaptive_height: True
+            spacing: dp(5)
 
-        # --- Timer Display ---
-        MDLabel:
-            text: root.timer_text
-            font_style: "H2"
-            halign: "center"
-            theme_text_color: "Custom"
-            text_color: app.theme_cls.primary_color if root.is_work_time else (0, 0.8, 0, 1)
+            MDLabel:
+                text: root.timer_text
+                font_style: "H2"
+                halign: "center"
+                theme_text_color: "Custom"
+                text_color: app.theme_cls.primary_color if root.is_work_time else (0, 0.8, 0, 1)
 
-        # --- Progress ---
-        MDProgressBar:
-            id: progress
-            value: root.progress_value
-            color: app.theme_cls.primary_color if root.is_work_time else (0, 0.8, 0, 1)
+            MDProgressBar:
+                id: progress
+                value: root.progress_value
+                color: app.theme_cls.primary_color if root.is_work_time else (0, 0.8, 0, 1)
+                size_hint_y: None
+                height: dp(8)
 
         MDLabel:
             text: root.status_text
             halign: "center"
             theme_text_color: "Secondary"
             font_style: "Subtitle1"
+            size_hint_y: None
+            height: dp(20)
 
-        MDLabel:
-            text: root.cycle_text
-            halign: "center"
-            theme_text_color: "Hint"
-            font_style: "Caption"
-
-        # --- Controls ---
+        # --- Controls (Start, Pause, Sound) ---
         MDBoxLayout:
             adaptive_height: True
-            spacing: dp(20)
+            spacing: dp(15)
             pos_hint: {"center_x": .5}
 
             MDIconButton:
@@ -134,12 +158,47 @@ KV = '''
                 icon: "skip-next"
                 disabled: not root.timer_running
                 on_release: root.finish_early()
+            
+            # --- دکمه جدید تیک‌تاک ---
+            MDIconButton:
+                icon: "metronome" if not root.tick_sound_enabled else "metronome-tick"
+                theme_text_color: "Custom"
+                text_color: (0.5, 0.5, 0.5, 1) if not root.tick_sound_enabled else app.theme_cls.primary_color
+                on_release: root.toggle_tick_sound()
+
+        # --- To-Do List Section (NEW CHECKLIST) ---
+        MDCard:
+            orientation: "vertical"
+            padding: dp(10)
+            radius: [15]
+            elevation: 2
+            
+            MDBoxLayout:
+                adaptive_height: True
+                spacing: dp(10)
+                
+                MDTextField:
+                    id: task_input
+                    hint_text: "Add a task..."
+                    mode: "round"
+                    size_hint_x: 0.8
+                    font_size: "14sp"
+                    
+                MDIconButton:
+                    icon: "plus-circle"
+                    theme_text_color: "Custom"
+                    text_color: app.theme_cls.primary_color
+                    on_release: root.add_task()
+
+            ScrollView:
+                MDList:
+                    id: task_list_container
 
         # --- Bottom Navigation ---
         MDBoxLayout:
             adaptive_height: True
             spacing: dp(10)
-            padding: [0, dp(20), 0, 0]
+            padding: [0, dp(10), 0, 0]
 
             MDIconButton:
                 icon: "cog"
@@ -572,23 +631,44 @@ class HomeScreen(MDScreen):
     progress_value = NumericProperty(0)
     timer_running = BooleanProperty(False)
     is_work_time = BooleanProperty(True)
+    tick_sound_enabled = BooleanProperty(False) # متغیر جدید برای وضعیت صدا
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.clock_event = None
         self.app = MDApp.get_running_app()
         self.cfg = self.app.config_engine
+        self.last_tick_time = -1 # برای جلوگیری از تکرار صدا
         self.reset_state()
 
     def on_enter(self):
         self.greeting_text = f"Hi, {self.cfg.user_name}"
         self.user_title_text = self.cfg.user_title
-        
-        # انتخاب یک جمله تصادفی هنگام ورود به صفحه
         self.quote_text = random.choice(self.cfg.quotes)
-
         current = self.cycles_completed + 1 if self.cycles_completed < self.cfg.cycles_limit else self.cfg.cycles_limit
         self.cycle_text = f"Cycle: {current}/{self.cfg.cycles_limit}"
+
+    # --- متدهای جدید چک لیست ---
+    def add_task(self):
+        task_text = self.ids.task_input.text
+        if task_text.strip():
+            new_item = TaskItem(task_text=task_text)
+            self.ids.task_list_container.add_widget(new_item)
+            self.ids.task_input.text = ""
+
+    # --- متدهای جدید صدا ---
+    def toggle_tick_sound(self):
+        self.tick_sound_enabled = not self.tick_sound_enabled
+
+    def play_tick(self):
+        # فقط اگر صدا فعال باشد و در زمان کار باشیم (نه استراحت)
+        if self.tick_sound_enabled and self.is_work_time and self.app.tick_sound:
+            try:
+                if self.app.tick_sound.state == 'play':
+                    self.app.tick_sound.stop()
+                self.app.tick_sound.play()
+            except:
+                pass
 
     def reset_state(self):
         self.timer_running = False
@@ -603,18 +683,13 @@ class HomeScreen(MDScreen):
         if self.clock_event: self.clock_event.cancel()
         self.ids.task_input.text = ""
         self.ids.task_input.error = False
+        self.last_tick_time = -1
 
     def update_display_time(self):
         mins, secs = divmod(self.time_left, 60)
         self.timer_text = f"{mins:02d}:{secs:02d}"
 
     def toggle_timer(self):
-        raw_task = self.ids.task_input.text.strip()
-        if not raw_task:
-            self.ids.task_input.error = True
-            return
-        self.ids.task_input.error = False
-
         if not self.timer_running:
             self.timer_running = True
             self.status_text = "Focusing..."
@@ -634,6 +709,13 @@ class HomeScreen(MDScreen):
             self.update_display_time()
             elapsed = self.total_time_session - self.time_left
             self.progress_value = (elapsed / self.total_time_session) * 100
+            
+            # --- لاجیک پخش صدا ---
+            # چون ساعت هر 0.5 ثانیه چک می‌شود، فقط وقتی ثانیه عوض شد صدا بده
+            if self.time_left != self.last_tick_time:
+                self.play_tick()
+                self.last_tick_time = self.time_left
+
         else:
             self.time_left = 0
             self.update_display_time()
@@ -651,22 +733,18 @@ class HomeScreen(MDScreen):
         if self.clock_event: self.clock_event.cancel()
         self.progress_value = 100 if not is_early else self.progress_value
 
-        # --- آلارم و ویبره ---
+        # --- آلارم پایان ---
         try:
             notification.notify(title="PomoPulse", message="Session Ended!", timeout=5)
-            
-            # ویبره (فقط اندروید)
             if platform == 'android':
-                vibrator.vibrate(1) # 1 ثانیه
-
-            # صدا (ویندوز)
-            if winsound:
-                winsound.Beep(2500, 1000)
+                vibrator.vibrate(1) 
         except: 
             pass
         # ---------------------
 
-        task_name = self.ids.task_input.text.strip() or "General"
+        # نام تسک دیگر از اینپوت ساده خوانده نمی‌شود، بلکه اولین تسک لیست یا جنرال ثبت می‌شود
+        # (برای سادگی فعلاً همان General یا یک تسک فرضی)
+        task_name = "Focus Session" # ساده‌سازی برای این نسخه
         duration_to_log = manual_duration if manual_duration is not None else self.cfg.work_min
 
         if self.is_work_time:
@@ -684,7 +762,7 @@ class HomeScreen(MDScreen):
             self.is_work_time = False
         else:
             self.status_text = "Back to Work! 🚀"
-            self.quote_text = random.choice(self.cfg.quotes) # تغییر جمله در شروع دور جدید
+            self.quote_text = random.choice(self.cfg.quotes) 
             self.time_left = self.cfg.work_min * 60
             self.is_work_time = True
             current_cycle = self.cycles_completed + 1
@@ -852,6 +930,9 @@ class PomoPulseApp(MDApp):
     def build(self):
         self.theme_cls.theme_style = "Dark"
         self.config_engine = PomodoroConfig()
+        
+        # بارگذاری فایل صدا (مطمئن شو فایل tick.wav کنار برنامه است)
+        self.tick_sound = SoundLoader.load('tick.wav')
 
         try:
             self.theme_cls.primary_palette = self.config_engine.current_accent
@@ -880,7 +961,6 @@ class PomoPulseApp(MDApp):
                 WindowManager = autoclass('android.view.WindowManager')
                 LayoutParams = autoclass('android.view.WindowManager$LayoutParams')
                 
-                # پرچم روشن نگه داشتن صفحه
                 FLAG_KEEP_SCREEN_ON = LayoutParams.FLAG_KEEP_SCREEN_ON
 
                 def add_flags():
