@@ -125,7 +125,7 @@ android.skip_update = True
 # agreements. This is intended for automation only. If set to False,
 # the default, you will be shown the license when first running
 # buildozer.
-# android.accept_sdk_license = False
+android.accept_sdk_license = True
 
 # (str) Android entry point, default is ok for Kivy-based app
 #android.entrypoint = org.kivy.android.PythonActivity
@@ -445,6 +445,7 @@ android.keystore = release.keystore
 android.keystore_password = 123456
 android.keyalias = mykey
 android.keyalias_password = 123456
+
 
 
 
