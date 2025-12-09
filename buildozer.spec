@@ -19,7 +19,7 @@ source.include_exts = py,png,jpg,kv,atlas,mp3,wav,ini,csv
 source.exclude_dirs = tests, bin, venv, __pycache__
 
 # (str) Application versioning (method 1)
-version = 1.0
+version = 1.1
 
 # (list) Application requirements
 requirements = python3,kivy==2.2.1,kivymd==1.1.1,pillow,plyer,pyjnius,cython==0.29.36
@@ -276,7 +276,7 @@ android.archs = arm64-v8a, armeabi-v7a
 
 # (int) overrides automatic versionCode computation (used in build.gradle)
 # this is not the same as app version and should only be edited if you know what you're doing
-android.numeric_version = 10
+android.numeric_version = 11
 
 # (bool) enables Android auto backup feature (Android API >=23)
 android.allow_backup = True
@@ -445,6 +445,7 @@ android.keystore = release.keystore
 android.keystore_password = 123456
 android.keyalias = mykey
 android.keyalias_password = 123456
+
 
 
 
