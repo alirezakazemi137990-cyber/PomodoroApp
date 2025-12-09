@@ -13,27 +13,17 @@ package.domain = com.pomopulse
 source.dir = .
 
 # (list) Source files to include (let empty to include all the files)
-source.include_exts = py,png,jpg,kv,atlas,mp3,wav
-
-
-# (list) List of inclusions using pattern matching
-#source.include_patterns = assets/*,images/*.png
-
-# (list) Source files to exclude (let empty to not exclude anything)
-#source.exclude_exts = spec
+source.include_exts = py,png,jpg,kv,atlas,mp3,wav,ini,csv
 
 # (list) List of directory to exclude (let empty to not exclude anything)
 source.exclude_dirs = tests, bin, venv, __pycache__
 
-
-# (list) List of exclusions using pattern matching
-# Do not prefix with './'
-#source.exclude_patterns = license,images/*/*.jpg
-
 # (str) Application versioning (method 1)
-version = 0.1
+version = 1.0
+
 # (list) Application requirements
-requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,plyer,pyjnius
+requirements = python3,kivy==2.2.1,kivymd==1.1.1,pillow,plyer,pyjnius,cython==0.29.36
+
 
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
@@ -97,7 +87,7 @@ android.permissions = INTERNET,VIBRATE,WAKE_LOCK
 #android.features = android.hardware.usb.host
 
 # (int) Target Android API, should be as high as possible.
-android.api = 34
+android.api = 33
 
 # (int) Minimum API your APK / AAB will support.
 android.minapi = 24
@@ -256,7 +246,7 @@ android.enable_androidx = True
 
 # (bool) Indicate whether the screen should stay on
 # Don't forget to add the WAKE_LOCK permission if you set this to True
-#android.wakelock = False
+android.wakelock = True
 
 # (list) Android application meta-data to set (key=value format)
 #android.meta_data =
@@ -455,6 +445,7 @@ android.keystore = release.keystore
 android.keystore_password = 123456
 android.keyalias = mykey
 android.keyalias_password = 123456
+
 
 
 
