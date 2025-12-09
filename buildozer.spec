@@ -119,7 +119,7 @@ android.ndk_api = 24
 # (bool) If True, then skip trying to update the Android sdk
 # This can be useful to avoid excess Internet downloads or save time
 # when an update is due and you just want to test/build your package
-# android.skip_update = False
+android.skip_update = True
 
 # (bool) If True, then automatically accept SDK license
 # agreements. This is intended for automation only. If set to False,
@@ -276,7 +276,7 @@ android.archs = arm64-v8a, armeabi-v7a
 
 # (int) overrides automatic versionCode computation (used in build.gradle)
 # this is not the same as app version and should only be edited if you know what you're doing
-# android.numeric_version = 1
+android.numeric_version = 10
 
 # (bool) enables Android auto backup feature (Android API >=23)
 android.allow_backup = True
@@ -445,6 +445,7 @@ android.keystore = release.keystore
 android.keystore_password = 123456
 android.keyalias = mykey
 android.keyalias_password = 123456
+
 
 
 
