@@ -668,10 +668,10 @@ class HomeScreen(MDScreen):
         self.timer_text = f"{mins:02d}:{secs:02d}"
 
     def toggle_timer(self):
-    raw_task = self.ids.task_input.text.strip()
-    if not raw_task:
-        self.ids.task_input.error = True
-        return
+        raw_task = self.ids.task_input.text.strip()
+        if not raw_task:
+            self.ids.task_input.error = True
+            return
     self.ids.task_input.error = False
 
     if not self.timer_running:
@@ -995,4 +995,5 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
+
 
