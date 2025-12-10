@@ -576,6 +576,7 @@ class HomeScreen(MDScreen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.clock_event = None
+        self.end_time = None   # <-- اضافه کن این خط
         self.app = MDApp.get_running_app()
         self.cfg = self.app.config_engine
         self.reset_state()
@@ -594,48 +595,149 @@ class HomeScreen(MDScreen):
         self.timer_running = False
         self.is_work_time = True
         self.cycles_completed = 0
-        self.time_left = self.cfg.work_min * 60
+
+        # مقداردهی زمان‌ها (اطمینان از int)
+        self.time_left = int(self.cfg.work_min) * 60
         self.total_time_session = self.time_left
+
         self.update_display_time()
         self.progress_value = 0
         self.status_text = "Ready to Focus?"
         self.cycle_text = f"Cycle: 1/{self.cfg.cycles_limit}"
-        if self.clock_event: self.clock_event.cancel()
-        self.ids.task_input.text = ""
-        self.ids.task_input.error = False
+
+        # لغو ایونت ساعت اگر وجود دارد و پاک‌سازی مرجع‌ها
+        if getattr(self, "clock_event", None):
+            try:
+                self.clock_event.cancel()
+            except Exception:
+                pass
+        self.clock_event = None
+        self.end_time = None
+
+        # دسترسی ایمن به widget‌های ids (ممکن است صفحه آماده نباشد)
+        try:
+            self.ids.task_input.text = ""
+            self.ids.task_input.error = False
+            self.ids.task_input.disabled = False
+        except Exception:
+            pass
+
+    def reset_timer(self):
+        # ۱) فوری تایمر را غیرفعال کن تا تیک‌های معلق در update_clock سریع بازگردند
+        self.timer_running = False
+    
+        # ۲) پاک‌سازی مرجع زمان پایان قبل از لغو ایونت (محافظ قدرتمند)
+        self.end_time = None
+    
+        # ۳) لغو ایونت ساعت اگر بود
+        if getattr(self, "clock_event", None):
+            try:
+                self.clock_event.cancel()
+            except Exception:
+                pass
+            self.clock_event = None
+    
+        # ۴) بازنشانی حالت/زمان به ابتدای همان مرحله (کار یا استراحت)
+        if self.is_work_time:
+            self.time_left = int(self.cfg.work_min) * 60
+            self.status_text = "Ready to Focus?"
+        else:
+            if self.cycles_completed == 0:
+                self.time_left = int(self.cfg.long_break_min) * 60
+                self.status_text = "Long Break! 🎉"
+            else:
+                self.time_left = int(self.cfg.short_break_min) * 60
+                self.status_text = "Short Break ☕"
+    
+        self.total_time_session = self.time_left
+    
+        # ۵) UI
+        self.update_display_time()
+        self.progress_value = 0
+        current_cycle_display = self.cycles_completed + 1
+        self.cycle_text = f"Cycle: {current_cycle_display}/{self.cfg.cycles_limit}"
+    
+        try:
+            self.ids.task_input.disabled = False
+            self.ids.task_input.error = False
+        except Exception:
+            pass
 
     def update_display_time(self):
         mins, secs = divmod(self.time_left, 60)
         self.timer_text = f"{mins:02d}:{secs:02d}"
 
     def toggle_timer(self):
-        raw_task = self.ids.task_input.text.strip()
-        if not raw_task:
-            self.ids.task_input.error = True
-            return
-        self.ids.task_input.error = False
+    raw_task = self.ids.task_input.text.strip()
+    if not raw_task:
+        self.ids.task_input.error = True
+        return
+    self.ids.task_input.error = False
 
-        if not self.timer_running:
-            self.timer_running = True
-            self.status_text = "Focusing..."
-            self.end_time = datetime.now() + timedelta(seconds=self.time_left)
-            self.clock_event = Clock.schedule_interval(self.update_clock, 0.5)
-        else:
-            self.timer_running = False
-            if self.clock_event: self.clock_event.cancel()
-            self.status_text = "Paused"
+    if not self.timer_running:
+        # شروع امن: علامت اجرای تایمر را اول ست می‌کنیم
+        self.timer_running = True
+        self.status_text = "Focusing..."
+
+        # اگر ایونتی از قبل وجود داشت، تلاش می‌کنیم لغوش کنیم (دفاعی)
+        if getattr(self, "clock_event", None):
+            try:
+                self.clock_event.cancel()
+            except Exception:
+                pass
+            self.clock_event = None
+
+        # set end_time سپس ایونت ساعت را schedule کن
+        self.end_time = datetime.now() + timedelta(seconds=self.time_left)
+        self.clock_event = Clock.schedule_interval(self.update_clock, 0.5)
+    else:
+        # متوقف کردن امن: ابتدا timer_running = False و پاک‌سازی end_time
+        self.timer_running = False
+        self.end_time = None
+        if getattr(self, "clock_event", None):
+            try:
+                self.clock_event.cancel()
+            except Exception:
+                pass
+            self.clock_event = None
+        self.status_text = "Paused"
 
     def update_clock(self, dt):
-        now = datetime.now()
-        remaining = self.end_time - now
-        self.time_left = int(remaining.total_seconds())
-
+        # گارد اولیه: اگر منطقا تایمر خاموش است یا end_time تنظیم نشده، سریع بازگرد
+        if not getattr(self, "timer_running", False):
+            return
+        if not getattr(self, "end_time", None):
+            return
+    
+        try:
+            now = datetime.now()
+            remaining = self.end_time - now
+            secs = int(remaining.total_seconds())
+        except Exception:
+            # دفاعی: اگر مشکلِ غیرمنتظره‌ای پیش آمد، تایمر را کاملاً متوقف کن
+            self.timer_running = False
+            if getattr(self, "clock_event", None):
+                try:
+                    self.clock_event.cancel()
+                except Exception:
+                    pass
+                self.clock_event = None
+            self.end_time = None
+            return
+    
+        # امن‌سازی مقداردهی time_left
+        self.time_left = max(0, secs)
+    
         if self.time_left > 0:
             self.update_display_time()
-            elapsed = self.total_time_session - self.time_left
-            self.progress_value = (elapsed / self.total_time_session) * 100
+            elapsed = max(0, self.total_time_session - self.time_left)
+            # محافظ تقسیم بر صفر
+            if getattr(self, "total_time_session", 0) > 0:
+                self.progress_value = (elapsed / self.total_time_session) * 100
+            else:
+                self.progress_value = 0
         else:
-            self.time_left = 0
+            # وقت تموم شده — خاتمه جلسه
             self.update_display_time()
             self.finish_session()
 
@@ -893,3 +995,4 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
+
