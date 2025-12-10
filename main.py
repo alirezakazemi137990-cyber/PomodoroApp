@@ -663,22 +663,15 @@ class HomeScreen(MDScreen):
         except Exception:
             pass
 
-    def update_display_time(self, seconds_val):
-        """
-        Updates the timer label (e.g. 25:00).
-        Fix: Forces conversion to integer to prevent float formatting errors.
-        """
-        # --- FIX START: تبدیل اجباری به عدد صحیح ---
-        if seconds_val < 0:
-            seconds_val = 0
-            
-        val_int = int(seconds_val)  # حذف اعشار
-        minutes = val_int // 60
-        seconds = val_int % 60
-        
-        self.timer_text = f"{minutes:02d}:{seconds:02d}"
-        self.progress_value = val_int
-        # --- FIX END ---
+    def update_display_time(self, seconds_val=None):
+        # اگر ورودی داده نشد (مثل موقع ریست)، از زمان فعلی کلاس استفاده کن
+        if seconds_val is None:
+            seconds_val = self.seconds
+
+        # تبدیل اجباری به عدد صحیح برای جلوگیری از کرش
+        val = int(seconds_val)
+        m, s = divmod(val, 60)
+        self.timer_text = f"{m:02d}:{s:02d}"
 
     def toggle_timer(self):
         raw_task = self.ids.task_input.text.strip()
@@ -1013,6 +1006,7 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
+
 
 
 
