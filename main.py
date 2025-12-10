@@ -672,81 +672,35 @@ class HomeScreen(MDScreen):
         if not raw_task:
             self.ids.task_input.error = True
             return
-    self.ids.task_input.error = False
+        self.ids.task_input.error = False
 
-    if not self.timer_running:
-        # شروع امن: علامت اجرای تایمر را اول ست می‌کنیم
-        self.timer_running = True
-        self.status_text = "Focusing..."
+        if not self.timer_running:
+            # شروع امن: علامت اجرای تایمر را اول ست می‌کنیم
+            self.timer_running = True
+            self.status_text = "Focusing..."
 
-        # اگر ایونتی از قبل وجود داشت، تلاش می‌کنیم لغوش کنیم (دفاعی)
-        if getattr(self, "clock_event", None):
-            try:
-                self.clock_event.cancel()
-            except Exception:
-                pass
-            self.clock_event = None
-
-        # set end_time سپس ایونت ساعت را schedule کن
-        self.end_time = datetime.now() + timedelta(seconds=self.time_left)
-        self.clock_event = Clock.schedule_interval(self.update_clock, 0.5)
-    else:
-        # متوقف کردن امن: ابتدا timer_running = False و پاک‌سازی end_time
-        self.timer_running = False
-        self.end_time = None
-        if getattr(self, "clock_event", None):
-            try:
-                self.clock_event.cancel()
-            except Exception:
-                pass
-            self.clock_event = None
-        self.status_text = "Paused"
-
-    def update_clock(self, dt):
-        # گارد اولیه: اگر منطقا تایمر خاموش است یا end_time تنظیم نشده، سریع بازگرد
-        if not getattr(self, "timer_running", False):
-            return
-        if not getattr(self, "end_time", None):
-            return
-    
-        try:
-            now = datetime.now()
-            remaining = self.end_time - now
-            secs = int(remaining.total_seconds())
-        except Exception:
-            # دفاعی: اگر مشکلِ غیرمنتظره‌ای پیش آمد، تایمر را کاملاً متوقف کن
-            self.timer_running = False
+            # اگر ایونتی از قبل وجود داشت، تلاش می‌کنیم لغوش کنیم (دفاعی)
             if getattr(self, "clock_event", None):
                 try:
                     self.clock_event.cancel()
                 except Exception:
                     pass
                 self.clock_event = None
-            self.end_time = None
-            return
-    
-        # امن‌سازی مقداردهی time_left
-        self.time_left = max(0, secs)
-    
-        if self.time_left > 0:
-            self.update_display_time()
-            elapsed = max(0, self.total_time_session - self.time_left)
-            # محافظ تقسیم بر صفر
-            if getattr(self, "total_time_session", 0) > 0:
-                self.progress_value = (elapsed / self.total_time_session) * 100
-            else:
-                self.progress_value = 0
-        else:
-            # وقت تموم شده — خاتمه جلسه
-            self.update_display_time()
-            self.finish_session()
 
-    def finish_early(self):
-        if not self.timer_running: return
-        elapsed_seconds = self.total_time_session - self.time_left
-        elapsed_minutes = int(elapsed_seconds / 60)
-        if elapsed_minutes < 1: elapsed_minutes = 1
-        self.finish_session(manual_duration=elapsed_minutes, is_early=True)
+            # set end_time سپس ایونت ساعت را schedule کن
+            self.end_time = datetime.now() + timedelta(seconds=self.time_left)
+            self.clock_event = Clock.schedule_interval(self.update_clock, 0.5)
+        else:
+            # متوقف کردن امن: ابتدا timer_running = False و پاک‌سازی end_time
+            self.timer_running = False
+            self.end_time = None
+            if getattr(self, "clock_event", None):
+                try:
+                    self.clock_event.cancel()
+                except Exception:
+                    pass
+                self.clock_event = None
+            self.status_text = "Paused"
 
     def finish_session(self, manual_duration=None, is_early=False):
         self.timer_running = False
@@ -995,5 +949,6 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
+
 
 
