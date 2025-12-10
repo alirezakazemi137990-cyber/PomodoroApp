@@ -12,7 +12,7 @@ from kivy.properties import StringProperty, NumericProperty, BooleanProperty
 from kivymd.app import MDApp
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.screenmanager import MDScreenManager
-from kivymd.uix.button import MDFlatButton, MDIconButton
+from kivymd.uix.button import MDFlatButton, MDIconButton, MDFillRoundFlatButton, MDRectangleFlatButton, MDRaisedButton
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.progressbar import MDProgressBar
 from kivymd.uix.list import OneLineAvatarIconListItem, IconLeftWidget
@@ -701,54 +701,105 @@ class HomeScreen(MDScreen):
                     pass
                 self.clock_event = None
             self.status_text = "Paused"
+            
+    def update_clock(self, dt):
+        # اگر تایمر در حال اجرا نیست یا زمان پایان مشخص نیست، ایونت را متوقف کن
+        if not self.timer_running or not self.end_time:
+            if getattr(self, "clock_event", None):
+                self.clock_event.cancel()
+                self.clock_event = None
+            return
+
+        # محاسبه زمان باقی‌مانده بر اساس ساعت سیستم
+        remaining = self.end_time - datetime.now()
+        self.time_left = max(0, remaining.total_seconds())
+
+        # آپدیت UI
+        self.update_display_time()
+        if self.total_time_session > 0:
+            self.progress_value = ((self.total_time_session - self.time_left) / self.total_time_session) * 100
+        else:
+            self.progress_value = 0
+
+        # اگر زمان تمام شد
+        if self.time_left <= 0:
+            self.finish_session()
+
+    def finish_early(self):
+        if not self.timer_running or not self.is_work_time:
+            return
+
+        # محاسبه زمان سپری شده
+        elapsed_seconds = self.total_time_session - self.time_left
+        elapsed_minutes = round(elapsed_seconds / 60)
+
+        # اگر کمتر از یک دقیقه گذشته، فقط جلسه را رد کن بدون اینکه لاگ ثبت شود
+        if elapsed_minutes < 1:
+            self.finish_session(is_early=True)
+        else:
+            self.finish_session(manual_duration=elapsed_minutes, is_early=True)
 
     def finish_session(self, manual_duration=None, is_early=False):
+        # ۱. تایمر و ایونت‌ها را به طور کامل متوقف کن
         self.timer_running = False
-        if self.clock_event: self.clock_event.cancel()
-        self.progress_value = 100 if not is_early else self.progress_value
+        self.end_time = None
+        if getattr(self, "clock_event", None):
+            self.clock_event.cancel()
+            self.clock_event = None
+
+        # ۲. اگر جلسه به طور طبیعی تمام شده، پروگرس را ۱۰۰ کن
+        if not is_early:
+            self.progress_value = 100
 
         # --- آلارم و ویبره ---
         try:
-            notification.notify(title="PomoPulse", message="Session Ended!", timeout=5)
+            message = "Time for a break!" if self.is_work_time else "Back to work!"
+            notification.notify(title="PomoPulse", message=message, timeout=5)
             
-            # ویبره (فقط اندروید)
-            if platform == 'android':
-                vibrator.vibrate(1) # 1 ثانیه
+            if platform == 'android' and hasattr(vibrator, 'vibrate'):
+                vibrator.vibrate(0.5) # ویبره نیم ثانیه‌ای
 
-            # صدا (ویندوز)
             if winsound:
-                winsound.Beep(2500, 1000)
-        except: 
-            pass
+                winsound.Beep(2500, 800)
+        except Exception as e:
+            print(f"Alarm Error: {e}")
         # ---------------------
 
         task_name = self.ids.task_input.text.strip() or "General"
-        duration_to_log = manual_duration if manual_duration is not None else self.cfg.work_min
-
+        
+        # فقط برای جلسات کاری لاگ ثبت کن
         if self.is_work_time:
             session_type = "Work (Early)" if is_early else "Work"
-            self.cfg.log_session(session_type, duration_to_log, task_name)
+            duration_to_log = manual_duration if manual_duration is not None else int(self.cfg.work_min)
+            if duration_to_log > 0:
+                self.cfg.log_session(session_type, duration_to_log, task_name)
+            
             self.cycles_completed += 1
 
+        # --- رفتن به مرحله بعد (کار یا استراحت) ---
+        if self.is_work_time: # تازه کار تمام شده -> برو به استراحت
+            self.is_work_time = False
             if self.cycles_completed >= self.cfg.cycles_limit:
                 self.status_text = "Long Break! 🎉"
-                self.time_left = self.cfg.long_break_min * 60
-                self.cycles_completed = 0
+                self.time_left = int(self.cfg.long_break_min) * 60
+                self.cycles_completed = 0 # ریست کردن شمارنده برای دوره بعدی
             else:
                 self.status_text = "Short Break ☕"
-                self.time_left = self.cfg.short_break_min * 60
-            self.is_work_time = False
-        else:
-            self.status_text = "Back to Work! 🚀"
-            self.quote_text = random.choice(self.cfg.quotes) # تغییر جمله در شروع دور جدید
-            self.time_left = self.cfg.work_min * 60
+                self.time_left = int(self.cfg.short_break_min) * 60
+        else: # استراحت تمام شده -> برو به کار
             self.is_work_time = True
-            current_cycle = self.cycles_completed + 1
-            self.cycle_text = f"Cycle: {current_cycle}/{self.cfg.cycles_limit}"
-
+            self.status_text = "Back to Work! 🚀"
+            self.quote_text = random.choice(self.cfg.quotes) # تغییر جمله
+            self.time_left = int(self.cfg.work_min) * 60
+            
+        # آپدیت UI برای مرحله جدید
         self.total_time_session = self.time_left
         self.update_display_time()
-        if not is_early: self.progress_value = 0
+        self.progress_value = 0 
+        
+        current_cycle = self.cycles_completed + 1
+        self.cycle_text = f"Cycle: {current_cycle}/{self.cfg.cycles_limit}"
+
 
 class SettingsScreen(MDScreen):
     def on_enter(self):
@@ -949,6 +1000,7 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
+
 
 
 
