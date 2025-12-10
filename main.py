@@ -1,53 +1,30 @@
 import os
 import csv
+import time
 import configparser
-import random
-from datetime import datetime, timedelta
+from datetime import datetime
+
+# Kivy Imports
 from kivy.lang import Builder
 from kivy.clock import Clock
-from kivy.utils import platform
-from kivy.metrics import dp
-from kivy.uix.screenmanager import FadeTransition
 from kivy.properties import StringProperty, NumericProperty, BooleanProperty
+from kivy.core.audio import SoundLoader
+from kivy.uix.screenmanager import FadeTransition
+
+# KivyMD Imports
 from kivymd.app import MDApp
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.screenmanager import MDScreenManager
-from kivymd.uix.button import MDFlatButton, MDIconButton
+from kivymd.uix.button import MDFlatButton, MDIconButton, MDFillRoundFlatButton, MDRaisedButton, MDRectangleFlatButton
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.progressbar import MDProgressBar
-from kivymd.uix.list import TwoLineAvatarIconListItem, IconLeftWidget, IconRightWidget
+from kivymd.uix.list import OneLineAvatarIconListItem, IconLeftWidget, IRightBodyTouch
+from kivymd.uix.selectioncontrol import MDCheckbox
+from kivymd.uix.label import MDLabel
 from kivymd.uix.card import MDCard
 from kivymd.uix.textfield import MDTextField
-from kivy.core.audio import SoundLoader
-from plyer import notification, vibrator
-
-# --- وارد کردن کتابخانه‌های اندروید برای Wake Lock ---
-if platform == 'android':
-    from jnius import autoclass, cast
-    from android.runnable import run_on_ui_thread
-
-# ==========================================
-# 0. کلاس آیتم‌های چک‌لیست (Task Item Class)
-# ==========================================
-class TaskItem(TwoLineAvatarIconListItem):
-    def __init__(self, task_text, **kwargs):
-        super().__init__(**kwargs)
-        self.text = task_text
-        self.secondary_text = "Pending"
-        self._original_text = task_text
-    
-    def on_check_press(self):
-        if self.secondary_text == "Pending":
-            self.secondary_text = "Done"
-            self.text = f"[s]{self._original_text}[/s]" # خط کشیدن روی متن
-            self.ids._left_container.children[0].icon = "checkbox-marked-circle-outline"
-        else:
-            self.secondary_text = "Pending"
-            self.text = self._original_text
-            self.ids._left_container.children[0].icon = "checkbox-blank-circle-outline"
-
-    def delete_item(self):
-        self.parent.remove_widget(self)
+from kivymd.uix.widget import Widget
+from plyer import notification
 
 # ==========================================
 # 1. طراحی رابط کاربری (KV Layout)
@@ -55,135 +32,163 @@ class TaskItem(TwoLineAvatarIconListItem):
 KV = '''
 #:import FadeTransition kivy.uix.screenmanager.FadeTransition
 
-# --- تمپلیت آیتم تسک ---
+# --- ویجت‌های سفارشی لیست کارها ---
+<RightCheckbox>:
+    adaptive_width: True
+
 <TaskItem>:
+    markup: True
     IconLeftWidget:
-        icon: "checkbox-blank-circle-outline"
-        on_release: root.on_check_press()
+        icon: "delete-outline"
+        theme_text_color: "Custom"
+        text_color: 0.8, 0, 0, 1
+        on_release: root.delete_task(root)
 
-    IconRightWidget:
-        icon: "trash-can-outline"
-        theme_text_color: "Error"
-        on_release: root.delete_item()
+    RightCheckbox:
+        MDCheckbox:
+            on_active: root.toggle_check(self, self.active)
 
+# --- صفحه اصلی ---
 <HomeScreen>:
     name: "home"
     MDBoxLayout:
         orientation: 'vertical'
-        padding: dp(20)
-        spacing: dp(15)
+        md_bg_color: 0.1, 0.1, 0.1, 1
 
-        # --- Header ---
+        # هدر (پروفایل)
         MDBoxLayout:
             adaptive_height: True
-            orientation: 'vertical'
-            MDLabel:
-                text: root.greeting_text
-                font_style: "H5"
+            padding: dp(15)
+            spacing: dp(10)
+            
+            MDIconButton:
+                icon: "account-circle"
+                user_font_size: "32sp"
                 theme_text_color: "Custom"
                 text_color: app.theme_cls.primary_color
-                halign: "center"
-            MDLabel:
-                text: root.user_title_text
-                font_style: "Caption"
-                theme_text_color: "Secondary"
-                halign: "center"
+                on_release: app.switch_screen("profile")
+                
+            MDBoxLayout:
+                orientation: 'vertical'
+                adaptive_height: True
+                pos_hint: {"center_y": .5}
+                MDLabel:
+                    text: root.greeting_text
+                    font_style: "Subtitle1"
+                    theme_text_color: "Custom"
+                    text_color: 1, 1, 1, 1
+                    bold: True
+                MDLabel:
+                    text: root.user_title_text
+                    font_style: "Caption"
+                    theme_text_color: "Hint"
 
-        # --- Quote of the Day ---
-        MDCard:
-            orientation: "vertical"
-            padding: dp(10)
-            size_hint_y: None
-            height: dp(50)
-            radius: [10]
-            md_bg_color: 0.2, 0.2, 0.2, 1
-            elevation: 0
-            
-            MDLabel:
-                text: root.quote_text
-                font_style: "Caption"
-                theme_text_color: "Custom"
-                text_color: 1, 1, 1, 1
-                halign: "center"
-                valign: "center"
-                italic: True
-
-        # --- Timer Display & Progress ---
+        # بخش تایمر
         MDBoxLayout:
             orientation: 'vertical'
-            adaptive_height: True
-            spacing: dp(5)
-
+            size_hint_y: 0.45
+            padding: dp(20)
+            spacing: dp(10)
+            
             MDLabel:
-                text: root.timer_text
-                font_style: "H2"
+                text: "Stay focused, keep growing."
                 halign: "center"
-                theme_text_color: "Custom"
-                text_color: app.theme_cls.primary_color if root.is_work_time else (0, 0.8, 0, 1)
+                theme_text_color: "Hint"
+                font_style: "Caption"
+                size_hint_y: None
+                height: dp(20)
+
+            MDBoxLayout:
+                orientation: 'vertical'
+                spacing: dp(5)
+                pos_hint: {"center_x": .5, "center_y": .5}
+                
+                MDLabel:
+                    text: root.timer_text
+                    font_style: "H2"
+                    halign: "center"
+                    theme_text_color: "Custom"
+                    text_color: app.theme_cls.primary_color if root.is_work_time else (0, 0.8, 0, 1)
+                    font_size: "64sp"
+                    bold: True
+                
+                MDLabel:
+                    text: root.status_text
+                    halign: "center"
+                    theme_text_color: "Custom"
+                    text_color: 0.7, 0.7, 0.7, 1
+                    font_style: "Subtitle1"
 
             MDProgressBar:
                 id: progress
                 value: root.progress_value
-                color: app.theme_cls.primary_color if root.is_work_time else (0, 0.8, 0, 1)
                 size_hint_y: None
                 height: dp(8)
+                color: app.theme_cls.primary_color if root.is_work_time else (0, 0.8, 0, 1)
 
-        MDLabel:
-            text: root.status_text
-            halign: "center"
-            theme_text_color: "Secondary"
-            font_style: "Subtitle1"
-            size_hint_y: None
-            height: dp(20)
+            MDLabel:
+                text: root.cycle_text
+                halign: "center"
+                theme_text_color: "Hint"
+                font_style: "Caption"
+                padding: [0, dp(10), 0, 0]
 
-        # --- Controls (Start, Pause, Sound) ---
+        # دکمه‌های کنترل تایمر
         MDBoxLayout:
             adaptive_height: True
-            spacing: dp(15)
+            spacing: dp(30)
+            padding: [0, dp(10), 0, dp(20)]
             pos_hint: {"center_x": .5}
 
             MDIconButton:
                 icon: "refresh"
+                theme_text_color: "Custom"
+                text_color: 1, 1, 1, 1
                 on_release: root.reset_timer()
 
             MDFillRoundFlatButton:
                 id: btn_start
                 text: "START" if not root.timer_running else "PAUSE"
-                font_size: "18sp"
-                size_hint_x: 0.5
+                font_size: "20sp"
+                size_hint_x: None
+                width: dp(150)
                 on_release: root.toggle_timer()
                 md_bg_color: app.theme_cls.primary_color if not root.timer_running else (1, 0.6, 0, 1)
 
             MDIconButton:
                 icon: "skip-next"
                 disabled: not root.timer_running
+                theme_text_color: "Custom"
+                text_color: 1, 1, 1, 1 if root.timer_running else (0.3, 0.3, 0.3, 1)
                 on_release: root.finish_early()
             
-            # --- دکمه جدید تیک‌تاک ---
             MDIconButton:
-                icon: "metronome" if not root.tick_sound_enabled else "metronome-tick"
+                icon: "metronome" if root.sound_enabled else "volume-off"
                 theme_text_color: "Custom"
-                text_color: (0.5, 0.5, 0.5, 1) if not root.tick_sound_enabled else app.theme_cls.primary_color
-                on_release: root.toggle_tick_sound()
+                text_color: app.theme_cls.primary_color if root.sound_enabled else (0.5, 0.5, 0.5, 1)
+                on_release: root.toggle_sound()
 
-        # --- To-Do List Section (NEW CHECKLIST) ---
+        # لیست کارها (Task Checklist)
         MDCard:
             orientation: "vertical"
-            padding: dp(10)
-            radius: [15]
+            size_hint_y: 0.35
+            radius: [20, 20, 0, 0]
+            md_bg_color: 0.15, 0.15, 0.15, 1
             elevation: 2
+            padding: dp(10)
             
             MDBoxLayout:
                 adaptive_height: True
-                spacing: dp(10)
+                spacing: dp(5)
                 
                 MDTextField:
                     id: task_input
                     hint_text: "Add a task..."
                     mode: "round"
-                    size_hint_x: 0.8
-                    font_size: "14sp"
-                    
+                    fill_color_normal: 0.2, 0.2, 0.2, 1
+                    text_color_normal: 1, 1, 1, 1
+                    size_hint_x: 0.85
+                
                 MDIconButton:
                     icon: "plus-circle"
                     theme_text_color: "Custom"
@@ -194,89 +199,84 @@ KV = '''
                 MDList:
                     id: task_list_container
 
-        # --- Bottom Navigation ---
+        # منوی ناوبری پایین
         MDBoxLayout:
             adaptive_height: True
-            spacing: dp(10)
-            padding: [0, dp(10), 0, 0]
-
+            md_bg_color: 0.08, 0.08, 0.08, 1
+            padding: [dp(20), dp(5), dp(20), dp(5)]
+            
             MDIconButton:
                 icon: "cog"
-                disabled: root.timer_running
-                text_color: app.theme_cls.primary_color
+                theme_text_color: "Custom"
+                text_color: 0.6, 0.6, 0.6, 1
                 on_release: app.switch_screen("settings")
-
-            MDLabel:
-                text: "" # Spacer
-
+            
+            Widget:
+            
             MDIconButton:
                 icon: "chart-bar"
-                disabled: root.timer_running
-                text_color: app.theme_cls.primary_color
+                theme_text_color: "Custom"
+                text_color: 0.6, 0.6, 0.6, 1
                 on_release: app.switch_screen("stats")
 
-            MDLabel:
-                text: "" # Spacer
-
-            MDIconButton:
-                icon: "account"
-                disabled: root.timer_running
-                text_color: app.theme_cls.primary_color
-                on_release: app.switch_screen("profile")
-
+# --- صفحه تنظیمات ---
 <SettingsScreen>:
     name: "settings"
     MDBoxLayout:
         orientation: 'vertical'
         padding: dp(20)
         spacing: dp(10)
+        md_bg_color: 0.1, 0.1, 0.1, 1
 
         MDLabel:
             text: "Settings"
             font_style: "H5"
             halign: "center"
+            theme_text_color: "Custom"
+            text_color: 1, 1, 1, 1
 
         MDTextField:
             id: work_min
             hint_text: "Work Duration (min)"
             input_filter: "int"
             text: str(app.config_engine.work_min)
+            mode: "rectangle"
 
         MDTextField:
             id: short_break
             hint_text: "Short Break (min)"
             input_filter: "int"
             text: str(app.config_engine.short_break_min)
+            mode: "rectangle"
 
         MDTextField:
             id: long_break
             hint_text: "Long Break (min)"
             input_filter: "int"
             text: str(app.config_engine.long_break_min)
+            mode: "rectangle"
 
-        MDLabel:
-            text: "Theme Color"
-            theme_text_color: "Secondary"
-
-        ScrollView:
-            MDList:
-                id: theme_list
+        Widget:
 
         MDRaisedButton:
             text: "SAVE & RETURN"
             pos_hint: {"center_x": .5}
             on_release: root.save_settings()
 
+# --- صفحه آمار ---
 <StatsScreen>:
     name: "stats"
     MDBoxLayout:
         orientation: 'vertical'
         padding: dp(20)
+        md_bg_color: 0.1, 0.1, 0.1, 1
 
         MDLabel:
             text: "Analytics"
             font_style: "H5"
             halign: "center"
+            theme_text_color: "Custom"
+            text_color: 1, 1, 1, 1
             size_hint_y: None
             height: dp(50)
 
@@ -284,117 +284,87 @@ KV = '''
             adaptive_height: True
             spacing: dp(10)
             padding: dp(10)
+            pos_hint: {"center_x": .5}
 
             MDRectangleFlatButton:
                 text: "Daily"
+                text_color: 1, 1, 1, 1
                 on_release: root.load_stats("Daily")
             MDRectangleFlatButton:
                 text: "Weekly"
+                text_color: 1, 1, 1, 1
                 on_release: root.load_stats("Weekly")
-            MDRectangleFlatButton:
-                text: "Monthly"
-                on_release: root.load_stats("Monthly")
 
-        # Summary Cards
         MDBoxLayout:
             adaptive_height: True
             padding: dp(5)
-            spacing: dp(5)
+            spacing: dp(10)
 
             MDCard:
                 orientation: "vertical"
-                padding: dp(5)
-                size_hint: 0.33, None
-                height: dp(80)
+                size_hint: 0.5, None
+                height: dp(100)
+                md_bg_color: 0.2, 0.2, 0.2, 1
+                padding: dp(10)
                 radius: [15]
                 MDLabel:
                     id: lbl_total_time
                     text: "0h 0m"
                     halign: "center"
-                    bold: True
+                    theme_text_color: "Custom"
+                    text_color: 1, 1, 1, 1
                     font_style: "H6"
                 MDLabel:
                     text: "Total Focus"
                     halign: "center"
-                    font_style: "Overline"
+                    theme_text_color: "Hint"
+                    font_style: "Caption"
 
             MDCard:
                 orientation: "vertical"
-                padding: dp(5)
-                size_hint: 0.33, None
-                height: dp(80)
+                size_hint: 0.5, None
+                height: dp(100)
+                md_bg_color: 0.2, 0.2, 0.2, 1
+                padding: dp(10)
                 radius: [15]
                 MDLabel:
                     id: lbl_sessions
                     text: "0"
                     halign: "center"
-                    bold: True
-                    font_style: "H6"
                     theme_text_color: "Custom"
-                    text_color: 0, 0.7, 0, 1
+                    text_color: 0, 0.8, 0, 1
+                    font_style: "H6"
                 MDLabel:
                     text: "Completed"
                     halign: "center"
-                    font_style: "Overline"
-
-            MDCard:
-                orientation: "vertical"
-                padding: dp(5)
-                size_hint: 0.33, None
-                height: dp(80)
-                radius: [15]
-                MDLabel:
-                    id: lbl_skipped
-                    text: "0"
-                    halign: "center"
-                    bold: True
-                    font_style: "H6"
-                    theme_text_color: "Custom"
-                    text_color: 1, 0.6, 0, 1
-                MDLabel:
-                    text: "Skipped"
-                    halign: "center"
-                    font_style: "Overline"
-
-        ScrollView:
-            MDBoxLayout:
-                id: stats_list
-                orientation: 'vertical'
-                adaptive_height: True
-                padding: [dp(10), dp(10)]
-                spacing: dp(15)
+                    theme_text_color: "Hint"
+                    font_style: "Caption"
 
         MDRaisedButton:
             text: "BACK"
             pos_hint: {"center_x": .5}
             on_release: app.switch_screen("home")
 
+# --- صفحه پروفایل ---
 <ProfileScreen>:
     name: "profile"
     MDBoxLayout:
         orientation: 'vertical'
         padding: dp(20)
         spacing: dp(20)
+        md_bg_color: 0.1, 0.1, 0.1, 1
 
         Widget:
 
         MDCard:
             orientation: "vertical"
             size_hint: None, None
-            size: dp(320), dp(400)
-            pos_hint: {"center_x": .5, "center_y": .5}
-            elevation: 4
-            padding: dp(25)
-            spacing: dp(20)
-            radius: [20, 20, 20, 20]
-
-            MDLabel:
-                text: "User Profile"
-                font_style: "H5"
-                halign: "center"
-                theme_text_color: "Primary"
-                size_hint_y: None
-                height: dp(40)
+            size: dp(300), dp(350)
+            pos_hint: {"center_x": .5}
+            padding: dp(20)
+            spacing: dp(15)
+            radius: [20]
+            md_bg_color: 0.2, 0.2, 0.2, 1
 
             MDIcon:
                 icon: "account-circle"
@@ -409,21 +379,18 @@ KV = '''
                 id: user_name
                 hint_text: "Display Name"
                 text: app.config_engine.user_name
-                icon_right: "account-edit"
-                mode: "fill"
+                mode: "rectangle"
 
             MDTextField:
                 id: user_title
-                hint_text: "Job Title / Tagline"
+                hint_text: "Job Title"
                 text: app.config_engine.user_title
-                icon_right: "briefcase-edit"
-                mode: "fill"
+                mode: "rectangle"
 
         MDBoxLayout:
             adaptive_height: True
             spacing: dp(20)
             pos_hint: {"center_x": .5}
-            padding: [0, dp(20), 0, 0]
 
             MDFlatButton:
                 text: "CANCEL"
@@ -432,20 +399,21 @@ KV = '''
 
             MDRaisedButton:
                 text: "SAVE PROFILE"
-                elevation: 2
                 on_release: root.save_profile()
 
         Widget:
 '''
 
 # ==========================================
-# 2. منطق برنامه (Logic Engine)
+# 2. منطق برنامه (Application Logic)
 # ==========================================
+
+# --- مدیریت تنظیمات و داده‌ها ---
 class PomodoroConfig:
     def __init__(self):
         self.config = configparser.ConfigParser()
-        
-        # مسیر ذخیره‌سازی
+        # تشخیص خودکار مسیر ذخیره‌سازی در اندروید یا ویندوز
+        from kivy.utils import platform
         if platform == 'android':
             from jnius import autoclass
             PythonActivity = autoclass('org.kivy.android.PythonActivity')
@@ -456,21 +424,6 @@ class PomodoroConfig:
 
         self.filename = os.path.join(self.data_dir, 'config.ini')
         self.history_file = os.path.join(self.data_dir, 'pomodoro_history.csv')
-        
-        # --- لیست جملات انگیزشی ---
-        self.quotes = [
-            "Future Dr. Kazemi, keep pushing!",
-            "Small steps every day.",
-            "Focus is the key to success.",
-            "You are building your dream.",
-            "Don't stop until you're proud.",
-            "Your potential is endless.",
-            "Discipline over motivation.",
-            "Make yourself proud today.",
-            "Study hard, shine later.",
-            "Success is a journey, not a destination."
-        ]
-
         self._load_config()
 
     def _load_config(self):
@@ -480,13 +433,9 @@ class PomodoroConfig:
                 'short_break': '5',
                 'long_break': '15',
                 'cycles': '4',
-                'theme_accent': 'Blue',
-                'theme_bg': 'Dark'
+                'theme_accent': 'Blue'
             }
-            self.config['USER'] = {
-                'name': 'Dr. Kazemi',
-                'title': 'Physician & Inventor'
-            }
+            self.config['USER'] = {'name': 'Dr. Kazemi', 'title': 'Physician & Inventor'}
             with open(self.filename, 'w') as configfile:
                 self.config.write(configfile)
         else:
@@ -494,11 +443,11 @@ class PomodoroConfig:
             if 'USER' not in self.config:
                 self.config['USER'] = {'name': 'User', 'title': 'Dreamer'}
 
+        # بارگذاری مقادیر با مقدار پیش‌فرض ایمن
         self.work_min = int(self.config['SETTINGS'].get('work_minutes', 25))
         self.short_break_min = int(self.config['SETTINGS'].get('short_break', 5))
         self.long_break_min = int(self.config['SETTINGS'].get('long_break', 15))
         self.cycles_limit = int(self.config['SETTINGS'].get('cycles', 4))
-        self.current_accent = self.config['SETTINGS'].get('theme_accent', 'Blue')
         self.user_name = self.config['USER'].get('name', 'User')
         self.user_title = self.config['USER'].get('title', 'Dreamer')
 
@@ -515,404 +464,219 @@ class PomodoroConfig:
 
     def get_chart_data(self, timeframe="Daily"):
         if not os.path.exists(self.history_file):
-            return {"bar_data": [], "pie_data": {}, "total_count": 0, "skipped_count": 0, "total_mins": 0}
+            return {"total_count": 0, "total_mins": 0}
 
         grand_total_mins = 0
-        grand_total_count = 0 
-        skipped_count = 0      
-        timeline_data = {}
-        task_distribution = {}
-
-        now = datetime.now()
-        labels = []
-
-        if timeframe == "Daily":
-            for i in range(6, -1, -1):
-                day = now - timedelta(days=i)
-                key = day.strftime("%Y-%m-%d")
-                label = day.strftime("%a")
-                timeline_data[key] = {}
-                labels.append((key, label))
-
-        elif timeframe == "Weekly":
-            for i in range(3, -1, -1):
-                week_start = now - timedelta(weeks=i)
-                key = week_start.strftime("%U")
-                label = f"W{key}"
-                timeline_data[key] = {}
-                labels.append((key, label))
-
-        elif timeframe == "Monthly":
-            for i in range(5, -1, -1):
-                current_month = now.month - i
-                current_year = now.year
-                if current_month <= 0:
-                    current_month += 12
-                    current_year -= 1
-                month_date = now.replace(year=current_year, month=current_month, day=1)
-                key = month_date.strftime("%Y-%m")
-                label = month_date.strftime("%b")
-                timeline_data[key] = {}
-                labels.append((key, label))
-
+        grand_total_count = 0
+        
         try:
             with open(self.history_file, "r", encoding="utf-8") as f:
                 reader = csv.reader(f)
                 next(reader, None)
                 for row in reader:
-                    if len(row) < 4: continue
-                    session_type = row[1]
-                    if not session_type.startswith("Work"): continue
-
-                    try:
-                        date_str = row[0].split(" ")[0]
-                        dt = datetime.strptime(date_str, "%Y-%m-%d")
-                        duration = int(row[2])
-                        task_name = row[3] if row[3] else "General"
-                    except: continue
-
-                    if session_type == "Work":
+                    if len(row) < 3: continue
+                    if "Work" in row[1]:
                         grand_total_count += 1
-                    else:
-                        skipped_count += 1 
+                        try:
+                            grand_total_mins += int(row[2])
+                        except: pass
+        except: pass
 
-                    grand_total_mins += duration
-                    task_distribution[task_name] = task_distribution.get(task_name, 0) + duration
-
-                    key = ""
-                    if timeframe == "Daily": key = date_str
-                    elif timeframe == "Weekly": key = dt.strftime("%U")
-                    elif timeframe == "Monthly": key = dt.strftime("%Y-%m")
-
-                    if key in timeline_data:
-                        timeline_data[key][task_name] = timeline_data[key].get(task_name, 0) + duration
-
-        except Exception as e:
-            print(f"Error reading stats: {e}")
-
-        bar_chart_data = []
-        for key, display_label in labels:
-            day_tasks = timeline_data.get(key, {})
-            total_day_time = sum(day_tasks.values())
-            bar_chart_data.append({
-                "label": display_label,
-                "total": total_day_time,
-                "details": day_tasks
-            })
-
-        return {
-            "bar_data": bar_chart_data,
-            "pie_data": task_distribution,
-            "total_count": grand_total_count,
-            "skipped_count": skipped_count,
-            "total_mins": grand_total_mins
-        }
+        return {"total_count": grand_total_count, "total_mins": grand_total_mins}
 
     def save_config(self):
         self.config['SETTINGS']['work_minutes'] = str(self.work_min)
         self.config['SETTINGS']['short_break'] = str(self.short_break_min)
         self.config['SETTINGS']['long_break'] = str(self.long_break_min)
-        self.config['SETTINGS']['theme_accent'] = self.current_accent
         self.config['USER']['name'] = self.user_name
         self.config['USER']['title'] = self.user_title
         with open(self.filename, 'w') as configfile:
             self.config.write(configfile)
 
-# ==========================================
-# 3. کلاس‌های صفحات (Screens)
-# ==========================================
+# --- کامپوننت‌های رابط کاربری ---
+
+class RightCheckbox(IRightBodyTouch, MDBoxLayout):
+    '''کانتینر برای قرار دادن چک‌باکس در سمت راست لیست آیتم'''
+    adaptive_width = True
+
+class TaskItem(OneLineAvatarIconListItem):
+    '''آیتم لیست کارها با قابلیت حذف و تیک زدن'''
+    def __init__(self, text="", **kwargs):
+        super().__init__(**kwargs)
+        self.text = text
+
+    def delete_task(self, item):
+        self.parent.remove_widget(item)
+
+    def toggle_check(self, checkbox, value):
+        if value:
+            self.text = f"[s]{self.text}[/s]" # خط زدن متن
+            self.theme_text_color = "Secondary"
+        else:
+            self.text = self.text.replace("[s]", "").replace("[/s]", "")
+            self.theme_text_color = "Primary"
+
+# --- صفحات برنامه ---
+
 class HomeScreen(MDScreen):
-    timer_text = StringProperty("00:00")
+    timer_text = StringProperty("25:00")
     status_text = StringProperty("Ready to Focus?")
     greeting_text = StringProperty("")
     user_title_text = StringProperty("")
-    quote_text = StringProperty("") 
     cycle_text = StringProperty("Cycle: 0/4")
     progress_value = NumericProperty(0)
     timer_running = BooleanProperty(False)
     is_work_time = BooleanProperty(True)
-    tick_sound_enabled = BooleanProperty(False) # متغیر جدید برای وضعیت صدا
+    sound_enabled = BooleanProperty(False)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.clock_event = None
         self.app = MDApp.get_running_app()
         self.cfg = self.app.config_engine
-        self.last_tick_time = -1 # برای جلوگیری از تکرار صدا
-        self.reset_state()
+        self.time_left = self.cfg.work_min * 60
+        self.total_time = self.time_left
+        self.cycles_completed = 0
+        
+        # لود کردن امن فایل صوتی
+        self.tick_sound = None
+        try:
+            self.tick_sound = SoundLoader.load('tick.wav')
+        except:
+            print("Audio Warning: Could not load tick.wav")
+            
+        self.last_tick_time = 0
 
     def on_enter(self):
         self.greeting_text = f"Hi, {self.cfg.user_name}"
         self.user_title_text = self.cfg.user_title
-        self.quote_text = random.choice(self.cfg.quotes)
         current = self.cycles_completed + 1 if self.cycles_completed < self.cfg.cycles_limit else self.cfg.cycles_limit
         self.cycle_text = f"Cycle: {current}/{self.cfg.cycles_limit}"
-
-    # --- متدهای جدید چک لیست ---
-    def add_task(self):
-        task_text = self.ids.task_input.text
-        if task_text.strip():
-            new_item = TaskItem(task_text=task_text)
-            self.ids.task_list_container.add_widget(new_item)
-            self.ids.task_input.text = ""
-
-    # --- متدهای جدید صدا ---
-    def toggle_tick_sound(self):
-        self.tick_sound_enabled = not self.tick_sound_enabled
-
-    def play_tick(self):
-        # فقط اگر صدا فعال باشد و در زمان کار باشیم (نه استراحت)
-        if self.tick_sound_enabled and self.is_work_time and self.app.tick_sound:
-            try:
-                if self.app.tick_sound.state == 'play':
-                    self.app.tick_sound.stop()
-                self.app.tick_sound.play()
-            except:
-                pass
-
-    def reset_state(self):
-        self.timer_running = False
-        self.is_work_time = True
-        self.cycles_completed = 0
-        self.time_left = self.cfg.work_min * 60
-        self.total_time_session = self.time_left
-        self.update_display_time()
-        self.progress_value = 0
-        self.status_text = "Ready to Focus?"
-        self.cycle_text = f"Cycle: 1/{self.cfg.cycles_limit}"
-        if self.clock_event: self.clock_event.cancel()
-        self.ids.task_input.text = ""
-        self.ids.task_input.error = False
-        self.last_tick_time = -1
-
-    def update_display_time(self):
-        mins, secs = divmod(self.time_left, 60)
-        self.timer_text = f"{mins:02d}:{secs:02d}"
 
     def toggle_timer(self):
         if not self.timer_running:
             self.timer_running = True
-            self.status_text = "Focusing..."
-            self.end_time = datetime.now() + timedelta(seconds=self.time_left)
-            self.clock_event = Clock.schedule_interval(self.update_clock, 0.5)
+            self.status_text = "Focusing..." if self.is_work_time else "Relaxing..."
+            self.clock_event = Clock.schedule_interval(self.update_clock, 1) 
         else:
             self.timer_running = False
-            if self.clock_event: self.clock_event.cancel()
             self.status_text = "Paused"
+            if self.clock_event: self.clock_event.cancel()
 
     def update_clock(self, dt):
-        now = datetime.now()
-        remaining = self.end_time - now
-        self.time_left = int(remaining.total_seconds())
-
         if self.time_left > 0:
-            self.update_display_time()
-            elapsed = self.total_time_session - self.time_left
-            self.progress_value = (elapsed / self.total_time_session) * 100
+            self.time_left -= 1
+            mins, secs = divmod(self.time_left, 60)
+            self.timer_text = f"{mins:02d}:{secs:02d}"
             
-            # --- لاجیک پخش صدا ---
-            # چون ساعت هر 0.5 ثانیه چک می‌شود، فقط وقتی ثانیه عوض شد صدا بده
-            if self.time_left != self.last_tick_time:
-                self.play_tick()
-                self.last_tick_time = self.time_left
+            elapsed = self.total_time - self.time_left
+            if self.total_time > 0:
+                self.progress_value = (elapsed / self.total_time) * 100
 
+            # پخش صدای تیک تاک
+            if self.sound_enabled and self.timer_running and self.is_work_time:
+                current_time = time.time()
+                # پخش هر 1 ثانیه بدون تداخل
+                if current_time - self.last_tick_time >= 1.0:
+                    if self.tick_sound:
+                        try:
+                            if self.tick_sound.status == 'play':
+                                self.tick_sound.stop()
+                            self.tick_sound.play()
+                        except: pass
+                    self.last_tick_time = current_time
         else:
-            self.time_left = 0
-            self.update_display_time()
+            # اگر زمان تمام شد (یا منفی شد)
             self.finish_session()
 
-    def finish_early(self):
-        if not self.timer_running: return
-        elapsed_seconds = self.total_time_session - self.time_left
-        elapsed_minutes = int(elapsed_seconds / 60)
-        if elapsed_minutes < 1: elapsed_minutes = 1
-        self.finish_session(manual_duration=elapsed_minutes, is_early=True)
-
-    def finish_session(self, manual_duration=None, is_early=False):
-        self.timer_running = False
+    def finish_session(self):
         if self.clock_event: self.clock_event.cancel()
-        self.progress_value = 100 if not is_early else self.progress_value
-
-        # --- آلارم پایان ---
-        try:
-            notification.notify(title="PomoPulse", message="Session Ended!", timeout=5)
-            if platform == 'android':
-                vibrator.vibrate(1) 
-        except: 
-            pass
-        # ---------------------
-
-        # نام تسک دیگر از اینپوت ساده خوانده نمی‌شود، بلکه اولین تسک لیست یا جنرال ثبت می‌شود
-        # (برای سادگی فعلاً همان General یا یک تسک فرضی)
-        task_name = "Focus Session" # ساده‌سازی برای این نسخه
-        duration_to_log = manual_duration if manual_duration is not None else self.cfg.work_min
-
+        self.timer_running = False
+        self.progress_value = 100
+        
+        task_name = "General" # بعداً می‌تواند از لیست انتخاب شود
+        
         if self.is_work_time:
-            session_type = "Work (Early)" if is_early else "Work"
-            self.cfg.log_session(session_type, duration_to_log, task_name)
             self.cycles_completed += 1
-
+            self.cfg.log_session("Work", self.cfg.work_min, task_name)
+            
             if self.cycles_completed >= self.cfg.cycles_limit:
-                self.status_text = "Long Break! 🎉"
                 self.time_left = self.cfg.long_break_min * 60
+                self.status_text = "Long Break!"
                 self.cycles_completed = 0
             else:
-                self.status_text = "Short Break ☕"
                 self.time_left = self.cfg.short_break_min * 60
+                self.status_text = "Short Break"
+            
             self.is_work_time = False
         else:
-            self.status_text = "Back to Work! 🚀"
-            self.quote_text = random.choice(self.cfg.quotes) 
             self.time_left = self.cfg.work_min * 60
+            self.status_text = "Back to Work"
             self.is_work_time = True
-            current_cycle = self.cycles_completed + 1
-            self.cycle_text = f"Cycle: {current_cycle}/{self.cfg.cycles_limit}"
 
-        self.total_time_session = self.time_left
-        self.update_display_time()
-        if not is_early: self.progress_value = 0
+        self.total_time = self.time_left
+        mins, secs = divmod(self.time_left, 60)
+        self.timer_text = f"{mins:02d}:{secs:02d}"
+        self.progress_value = 0
+        
+        try:
+            notification.notify(title="PomoPulse", message=self.status_text)
+        except: pass
+
+    def finish_early(self):
+        if self.is_work_time:
+            duration = (self.total_time - self.time_left)//60 if (self.total_time - self.time_left) > 60 else 0
+            self.cfg.log_session("Work (Skipped)", duration)
+        self.finish_session()
+
+    def reset_timer(self):
+        if self.clock_event: self.clock_event.cancel()
+        self.timer_running = False
+        self.is_work_time = True
+        self.time_left = self.cfg.work_min * 60
+        self.total_time = self.time_left
+        self.progress_value = 0
+        self.timer_text = f"{self.cfg.work_min:02d}:00"
+        self.status_text = "Ready?"
+
+    def add_task(self):
+        text = self.ids.task_input.text
+        if text.strip():
+            self.ids.task_list_container.add_widget(TaskItem(text=text))
+            self.ids.task_input.text = ""
+
+    def toggle_sound(self):
+        self.sound_enabled = not self.sound_enabled
 
 class SettingsScreen(MDScreen):
-    def on_enter(self):
-        app = MDApp.get_running_app()
-        colors = ["Blue", "Red", "Green", "Orange", "Purple", "Teal"]
-        self.ids.theme_list.clear_widgets()
-        for color in colors:
-            item = OneLineAvatarIconListItem(text=color, on_release=lambda x, c=color: self.set_theme(c))
-            icon = IconLeftWidget(icon="circle", theme_text_color="Custom", text_color=app.theme_cls.colors[color]["500"])
-            item.add_widget(icon)
-            self.ids.theme_list.add_widget(item)
-
-    def set_theme(self, color_name):
-        app = MDApp.get_running_app()
-        app.theme_cls.primary_palette = color_name
-        app.config_engine.current_accent = color_name
-
     def save_settings(self):
         app = MDApp.get_running_app()
         try:
-            app.config_engine.work_min = int(self.ids.work_min.text)
-            app.config_engine.short_break_min = int(self.ids.short_break.text)
-            app.config_engine.long_break_min = int(self.ids.long_break.text)
+            w = int(self.ids.work_min.text) if self.ids.work_min.text else 25
+            s = int(self.ids.short_break.text) if self.ids.short_break.text else 5
+            l = int(self.ids.long_break.text) if self.ids.long_break.text else 15
+
+            app.config_engine.work_min = w
+            app.config_engine.short_break_min = s
+            app.config_engine.long_break_min = l
             app.config_engine.save_config()
-            home_screen = app.root.get_screen("home")
-            home_screen.reset_state()
+            
+            # ریست کردن تایمر با مقادیر جدید
+            home = app.root.get_screen('home')
+            home.reset_timer()
             app.switch_screen("home")
         except ValueError:
             pass
 
 class StatsScreen(MDScreen):
-    colors = [
-        (0.29, 0.66, 0.95, 1), (0.96, 0.66, 0.26, 1), (0.37, 0.73, 0.54, 1),
-        (0.91, 0.34, 0.34, 1), (0.62, 0.45, 0.81, 1), (0.4, 0.4, 0.4, 1)
-    ]
-    
-    def get_color(self, index):
-        return self.colors[index % len(self.colors)]
-
-    def format_time(self, minutes):
-        if minutes == 0: return ""
-        h, m = divmod(int(minutes), 60)
-        if h > 0 and m > 0: return f"{h}h {m}m"
-        if h > 0: return f"{h}h"
-        return f"{m}m"
-
-    def on_enter(self):
+    def on_pre_enter(self):
         self.load_stats("Daily")
 
     def load_stats(self, timeframe):
         app = MDApp.get_running_app()
         data = app.config_engine.get_chart_data(timeframe)
-
-        self.ids.stats_list.clear_widgets()
-
-        # خلاصه
-        total_mins = data["total_mins"]
-        h, m = divmod(total_mins, 60)
-        self.ids.lbl_total_time.text = f"{h}h {m}m"
-        self.ids.lbl_sessions.text = str(data["total_count"])
-        self.ids.lbl_skipped.text = str(data["skipped_count"])
-
-        if not data["bar_data"] or total_mins == 0:
-            self.ids.stats_list.add_widget(MDLabel(
-                text="No data available.", halign="center", theme_text_color="Secondary"
-            ))
-            return
-
-        # نمودار میله‌ای
-        chart_card = MDBoxLayout(orientation="vertical", adaptive_height=True, spacing=dp(10), padding=[0, 0, 0, dp(20)])
-        chart_card.add_widget(MDLabel(text="Activity", font_style="Subtitle2", theme_text_color="Secondary"))
-
-        max_val = max((d['total'] for d in data["bar_data"]), default=60)
-        if max_val == 0: max_val = 60
-
-        chart_body = MDBoxLayout(orientation="horizontal", size_hint_y=None, height=dp(220), spacing=dp(5))
-        
-        # محور Y
-        y_axis = MDBoxLayout(orientation="vertical", size_hint_x=None, width=dp(35))
-        y_axis.add_widget(MDLabel(text=self.format_time(max_val), font_style="Caption", halign="right", valign="top"))
-        y_axis.add_widget(MDBoxLayout())
-        y_axis.add_widget(MDLabel(text="0m", font_style="Caption", halign="right", valign="bottom"))
-        y_axis.add_widget(MDBoxLayout(size_hint_y=None, height=dp(20)))
-        chart_body.add_widget(y_axis)
-
-        # میله‌ها
-        bars_layout = MDBoxLayout(orientation="horizontal", spacing=dp(10), padding=[dp(10), 0, 0, 0])
-        unique_tasks = list(data["pie_data"].keys())
-        task_color_map = {task: self.get_color(i) for i, task in enumerate(unique_tasks)}
-
-        for day_data in data["bar_data"]:
-            col = MDBoxLayout(orientation="vertical", size_hint_x=1)
-            total_day_time = day_data['total']
-            fill_percent = (total_day_time / max_val) if max_val > 0 else 0
-
-            col.add_widget(MDBoxLayout(size_hint_y=1.0 - fill_percent))
-            bar_container = MDBoxLayout(orientation="vertical", size_hint_y=fill_percent)
-
-            if total_day_time > 0:
-                bar_container.add_widget(MDLabel(text=self.format_time(total_day_time), halign="center", font_style="Overline", size_hint_y=None, height=dp(15)))
-                segments_wrapper = MDBoxLayout(orientation="vertical")
-                for task, duration in day_data["details"].items():
-                    segment_percent = duration / total_day_time
-                    color = task_color_map.get(task, self.get_color(len(unique_tasks)))
-                    segment = MDBoxLayout(size_hint_y=segment_percent, md_bg_color=color)
-                    segments_wrapper.add_widget(segment)
-                bar_container.add_widget(segments_wrapper)
-
-            col.add_widget(bar_container)
-            col.add_widget(MDLabel(text=day_data['label'], halign="center", theme_text_color="Secondary", font_style="Caption", size_hint_y=None, height=dp(20)))
-            bars_layout.add_widget(col)
-
-        chart_body.add_widget(bars_layout)
-        chart_card.add_widget(chart_body)
-        self.ids.stats_list.add_widget(chart_card)
-
-        # جزئیات
-        pie_container = MDBoxLayout(orientation="vertical", adaptive_height=True, spacing=dp(15), padding=[0, dp(20), 0, 0])
-        pie_container.add_widget(MDLabel(text="Details", font_style="Subtitle2", theme_text_color="Secondary"))
-
-        sorted_tasks = sorted(data["pie_data"].items(), key=lambda x: x[1], reverse=True)
-        grand_total = sum(data["pie_data"].values()) or 1
-
-        for task, duration in sorted_tasks:
-            percent = (duration / grand_total) * 100
-            color = task_color_map.get(task, self.get_color(len(unique_tasks)))
-            row = MDBoxLayout(adaptive_height=True, spacing=dp(15))
-            icon = MDIconButton(icon="checkbox-blank-circle", theme_text_color="Custom", text_color=color, size_hint=(None, None), size=(dp(30), dp(30)))
-            row.add_widget(icon)
-            
-            info_box = MDBoxLayout(orientation="vertical", adaptive_height=True, pos_hint={"center_y": .5})
-            top_line = MDBoxLayout(adaptive_height=True)
-            top_line.add_widget(MDLabel(text=task, font_style="Body2", bold=True))
-            top_line.add_widget(MDLabel(text=f"{int(percent)}% ({self.format_time(duration)})", halign="right", theme_text_color="Secondary", font_style="Caption"))
-            info_box.add_widget(top_line)
-            
-            pb = MDProgressBar(value=percent, color=color, size_hint_y=None, height=dp(6))
-            info_box.add_widget(pb)
-            row.add_widget(info_box)
-            pie_container.add_widget(row)
-
-        self.ids.stats_list.add_widget(pie_container)
+        self.ids.lbl_total_time.text = f"{data['total_mins']} m"
+        self.ids.lbl_sessions.text = str(data['total_count'])
 
 class ProfileScreen(MDScreen):
     def save_profile(self):
@@ -922,54 +686,23 @@ class ProfileScreen(MDScreen):
         app.config_engine.save_config()
         app.switch_screen("home")
 
-# ==========================================
-# 4. کلاس اصلی اپلیکیشن
-# ==========================================
 class PomoPulseApp(MDApp):
-
     def build(self):
         self.theme_cls.theme_style = "Dark"
+        self.theme_cls.primary_palette = "Blue"
         self.config_engine = PomodoroConfig()
         
-        # بارگذاری فایل صدا (مطمئن شو فایل tick.wav کنار برنامه است)
-        self.tick_sound = SoundLoader.load('tick.wav')
-
-        try:
-            self.theme_cls.primary_palette = self.config_engine.current_accent
-        except:
-            self.theme_cls.primary_palette = "Blue"
-
-        self.sm = MDScreenManager(transition=FadeTransition())
-        Builder.load_string(KV)
-
-        self.sm.add_widget(HomeScreen())
-        self.sm.add_widget(SettingsScreen())
-        self.sm.add_widget(StatsScreen())
-        self.sm.add_widget(ProfileScreen())
-
-        return self.sm
+        sm = MDScreenManager(transition=FadeTransition())
+        Builder.load_string(KV) # لود کردن KV استرینگ
+        
+        sm.add_widget(HomeScreen())
+        sm.add_widget(SettingsScreen())
+        sm.add_widget(StatsScreen())
+        sm.add_widget(ProfileScreen())
+        return sm
 
     def switch_screen(self, screen_name):
-        self.sm.current = screen_name
-
-    def on_start(self):
-        # --- فعال‌سازی Wake Lock برای اندروید ---
-        if platform == 'android':
-            try:
-                PythonActivity = autoclass('org.kivy.android.PythonActivity')
-                activity = PythonActivity.mActivity
-                WindowManager = autoclass('android.view.WindowManager')
-                LayoutParams = autoclass('android.view.WindowManager$LayoutParams')
-                
-                FLAG_KEEP_SCREEN_ON = LayoutParams.FLAG_KEEP_SCREEN_ON
-
-                def add_flags():
-                    window = activity.getWindow()
-                    window.addFlags(FLAG_KEEP_SCREEN_ON)
-
-                run_on_ui_thread(add_flags)()
-            except Exception as e:
-                print(f"WakeLock Error: {e}")
+        self.root.current = screen_name
 
 if __name__ == '__main__':
     PomoPulseApp().run()
