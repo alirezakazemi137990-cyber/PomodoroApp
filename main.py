@@ -666,7 +666,7 @@ class HomeScreen(MDScreen):
     def update_display_time(self, seconds_val=None):
         # اگر ورودی داده نشد (مثل موقع ریست)، از زمان فعلی کلاس استفاده کن
         if seconds_val is None:
-            seconds_val = self.seconds
+            seconds_val = self.time_left  # <--- این خط اصلاح شده اصلی است
 
         # تبدیل اجباری به عدد صحیح برای جلوگیری از کرش
         val = int(seconds_val)
@@ -1006,6 +1006,7 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
+
 
 
 
