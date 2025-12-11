@@ -15,6 +15,9 @@ source.dir = .
 # (list) Source files to include (let empty to include all the files)
 source.include_exts = py,png,jpg,kv,atlas,mp3,wav,ini,csv
 
+# (list) List of inclusions using pattern matching
+source.include_patterns = assets/*, assets/fonts/*
+
 # (list) List of directory to exclude (let empty to not exclude anything)
 source.exclude_dirs = tests, bin, venv, __pycache__
 
@@ -445,6 +448,7 @@ android.keystore = release.keystore
 android.keystore_password = 123456
 android.keyalias = mykey
 android.keyalias_password = 123456
+
 
 
 
