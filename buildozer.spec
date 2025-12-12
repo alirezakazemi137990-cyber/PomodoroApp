@@ -444,10 +444,11 @@ warn_on_root = 1
 #buildozer --profile demo android debug
 
 # Settings for release signing
-android.keystore = release.keystore
-android.keystore_password = 123456
-android.keyalias = mykey
-android.keyalias_password = 123456
+android.release.keystore = my-key.keystore
+android.release.keyalias = my-alias
+android.release.keystore_password = 123456
+android.release.keyalias_password = 123456
+
 
 
 
