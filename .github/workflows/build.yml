@@ -57,18 +57,33 @@ jobs:
 
     - name: Decode Keystore & Fix Path
       run: |
-        # 1. ساخت فایل کلید
+        # 1. ساخت فایل کلید از روی Secret
         echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 --decode > my-key.keystore
 
-        # 2. تنظیم اجباری آدرس فایل کلید (حتی اگر کامنت شده باشد اصلاح می‌شود)
+        # 2. پیدا کردن هوشمند نام مستعار (Alias) از داخل فایل
+        # این دستور لیست کلیدها رو میگیره و اولین Alias رو استخراج میکنه
+        ALIAS=$(keytool -list -v -keystore my-key.keystore -storepass 123456 | grep "Alias name:" | head -n 1 | sed 's/Alias name: //')
+        
+        echo "✅ Detected Alias: '$ALIAS'"
+
+        if [ -z "$ALIAS" ]; then
+          echo "❌ Error: Could not find any alias in the keystore! Check password or file."
+          exit 1
+        fi
+
+        # 3. تزریق تنظیمات صحیح به فایل buildozer.spec
+        # آدرس فایل
         sed -i "s|.*android.release.keystore = .*|android.release.keystore = $GITHUB_WORKSPACE/my-key.keystore|g" buildozer.spec
         
-        # 3. تنظیم اجباری نام مستعار (Alias) به my-alias
-        sed -i "s|.*android.release.keyalias = .*|android.release.keyalias = my-alias|g" buildozer.spec
+        # نام مستعار پیدا شده
+        sed -i "s|.*android.release.keyalias = .*|android.release.keyalias = $ALIAS|g" buildozer.spec
         
-        # 4. تنظیم اجباری رمز عبورها به 123456
+        # رمز عبور (فرض بر این است که رمز کلید و استور یکی است: 123456)
         sed -i "s|.*android.release.keystore_password = .*|android.release.keystore_password = 123456|g" buildozer.spec
         sed -i "s|.*android.release.keyalias_password = .*|android.release.keyalias_password = 123456|g" buildozer.spec
+        
+        echo "✅ Buildozer.spec updated successfully!"
+
 
     - name: Build APK with Buildozer
       run: |
