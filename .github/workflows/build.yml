@@ -84,29 +84,27 @@ jobs:
         
         echo "✅ Buildozer.spec updated successfully!"
 
-    # --- ۱. تنظیم اجباری جاوا ۱۷ برای جلوگیری از خطا ---
-    - name: Setup Java 17
+    # --- ۱. استفاده از جاوا ۱۱ (سازگارتر و پایدارتر) ---
+    - name: Setup Java 11
       uses: actions/setup-java@v3
       with:
         distribution: 'temurin'
-        java-version: '17'
+        java-version: '11'
 
-    # --- ۲. بیلد نهایی با تزریق مستقیم رمزها ---
+    # --- ۲. بیلد نهایی اصلاح شده ---
     - name: Build APK with Buildozer
       env:
-        # این دو خط باعث می‌شوند دیگر برای رمز سوال نپرسد و هنگ نکند
+        # رمزها را اینجا می‌دهیم تا بیلدوزر خودکار بردارد و سوال نپرسد
         P4A_RELEASE_KEYSTORE_PASSWD: "123456"
         P4A_RELEASE_KEYALIAS_PASSWD: "123456"
+        # تنظیم حافظه برای جلوگیری از کرش کردن جاوا
+        GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2g"
       run: |
-        # پاکسازی متغیرهای مزاحم
-        unset ANDROID_NDK_HOME
-        unset ANDROID_NDK_ROOT
-        unset ANDROID_SDK_ROOT
-        
+        # پاکسازی بیلد‌های قبلی
         rm -rf .buildozer
         
-        # استفاده از yes برای تایید خودکار همه چیز
-        yes | buildozer -v android release
+        # اجرا بدون yes (اگر تنظیمات درست باشد، خودش رد می‌شود)
+        buildozer -v android release
 
     - name: Upload APK Artifacts
       uses: actions/upload-artifact@v4
