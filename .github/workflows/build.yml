@@ -14,10 +14,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Set up JDK 17
+    # --- اصلاح ۱: استفاده از جاوا ۱۱ از همان ابتدا (بدون تغییر وسط کار) ---
+    - name: Set up JDK 11
       uses: actions/setup-java@v3
       with:
-        java-version: '17'
+        java-version: '11'
         distribution: 'temurin'
 
     - name: Setup Python
@@ -38,48 +39,37 @@ jobs:
           autoconf automake libtool pkg-config cmake zip unzip \
           libjpeg-dev libfreetype6-dev zipalign
 
-    - name: Configure Buildozer and Dependencies
+    - name: Configure Buildozer
       run: |
         pip install --upgrade pip
         pip install buildozer "Cython==0.29.36"
 
-        # تنظیمات ورژن اندروید
-        sed -i 's/android.api = 34/android.api = 33/g' buildozer.spec
-        if ! grep -q "android.api = 33" buildozer.spec; then
-          sed -i 's/android.api = .*/android.api = 33/g' buildozer.spec
-        fi
-
+        # تنظیم API روی 33 (پایدار)
+        sed -i 's/android.api = .*/android.api = 33/g' buildozer.spec
+        
         # تنظیم کتابخانه‌ها
         sed -i 's/^requirements =.*/requirements = python3,kivy==2.2.1,kivymd==1.1.1,pillow,plyer,pyjnius/g' buildozer.spec
         
-        # پذیرش لایسنس
+        # --- اصلاح ۲: تایید لایسنس همین‌جا انجام شود ---
         sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
+        
+        # --- اصلاح ۳: غیرفعال کردن تنظیمات امضا در فایل spec ---
+        # این کار باعث می‌شود بیلدوزر فایل را امضا نکند و هنگ نکند
+        sed -i 's/^android.release.keystore =/# android.release.keystore =/g' buildozer.spec
+        sed -i 's/^android.release.keyalias =/# android.release.keyalias =/g' buildozer.spec
 
-    - name: Decode Keystore (No Config Injection)
+    - name: Decode Keystore
       run: |
         echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 --decode > my-key.keystore
 
-    # تغییر به جاوا ۱۱ درست قبل از بیلد (پایدارترین نسخه)
-    - name: Set up Java 11
-      uses: actions/setup-java@v3
-      with:
-        distribution: 'temurin'
-        java-version: '11'
-
     - name: Build Unsigned APK
       env:
-        GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2g"
+        # --- اصلاح ۴: محدود کردن رم گریدل برای جلوگیری از کرش ---
+        GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m"
       run: |
-        # 1. غیرفعال کردن تنظیمات امضا در spec (جلوگیری از هنگ کردن)
-        sed -i 's/^android.release.keystore =.*/# android.release.keystore =/g' buildozer.spec
-        sed -i 's/^android.release.keyalias =.*/# android.release.keyalias =/g' buildozer.spec
-        
-        # 2. اجبار پذیرش لایسنس در فایل (تا دیگر سوال نپرسد و نیاز به yes نباشد)
-        sed -i 's/.*android.accept_sdk_license =.*/android.accept_sdk_license = True/' buildozer.spec
-
         rm -rf .buildozer
         
-        # 3. اجرای بیلد بدون "yes" (این کار جلوی ارور Broken Pipe را می‌گیرد)
+        # ساخت فایل بدون امضا (چون لایسنس را در مرحله قبل True کردیم، سوال نمی‌پرسد)
         buildozer -v android release
 
     - name: Sign APK Manually
@@ -87,24 +77,29 @@ jobs:
         echo "Searching for unsigned APK..."
         UNSIGNED_APK=$(find bin -name "*-release-unsigned.apk" | head -n 1)
         
-        # اگر بیلد به هر دلیلی شکست خورد، اینجا مشخص شود
         if [ -z "$UNSIGNED_APK" ]; then
-           echo "❌ Build failed! No APK found."
-           exit 1
+          echo "❌ Build Failed! Unsigned APK not found."
+          exit 1
         fi
 
-        # پیدا کردن ابزارهای اندروید
+        # پیدا کردن ابزارهای SDK
         BUILD_TOOLS_DIR=$(ls -d ~/.buildozer/android/platform/android-sdk/build-tools/*/ | tail -1)
         ZIPALIGN="${BUILD_TOOLS_DIR}zipalign"
         APKSIGNER="${BUILD_TOOLS_DIR}apksigner"
 
-        # بهینه‌سازی و امضا
+        echo "✅ Zipalign found at: $ZIPALIGN"
+        echo "✅ Apksigner found at: $APKSIGNER"
+
+        # ۱. بهینه‌سازی (Zipalign)
         "$ZIPALIGN" -v -p 4 "$UNSIGNED_APK" bin/aligned.apk
+
+        # ۲. امضا کردن دستی (با رمز 123456)
         "$APKSIGNER" sign --ks my-key.keystore --ks-pass pass:123456 --ks-key-alias my-alias --key-pass pass:123456 --out bin/pomopulse-final.apk bin/aligned.apk
+        
+        echo "🎉 Success! Signed APK created."
 
     - name: Upload Final APK
       uses: actions/upload-artifact@v4
       with:
         name: package
         path: bin/pomopulse-final.apk
-
