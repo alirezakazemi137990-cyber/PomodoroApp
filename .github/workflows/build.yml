@@ -14,7 +14,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # --- اصلاح ۱: استفاده از جاوا ۱۱ از همان ابتدا (بدون تغییر وسط کار) ---
+    # استفاده از جاوا ۱۱ (پایدارترین نسخه برای این بیلد)
     - name: Set up JDK 11
       uses: actions/setup-java@v3
       with:
@@ -25,6 +25,15 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
+
+    # ایجاد فایل تنظیمات گریدل برای کنترل رم (حیاتی برای جلوگیری از کرش)
+    - name: Configure Gradle Memory Settings
+      run: |
+        mkdir -p ~/.gradle
+        echo "org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError" > ~/.gradle/gradle.properties
+        echo "org.gradle.daemon=false" >> ~/.gradle/gradle.properties
+        echo "org.gradle.parallel=false" >> ~/.gradle/gradle.properties
+        echo "org.gradle.configureondemand=false" >> ~/.gradle/gradle.properties
 
     - name: Install System Dependencies
       run: |
@@ -44,17 +53,16 @@ jobs:
         pip install --upgrade pip
         pip install buildozer "Cython==0.29.36"
 
-        # تنظیم API روی 33 (پایدار)
+        # تنظیم API روی 33
         sed -i 's/android.api = .*/android.api = 33/g' buildozer.spec
         
         # تنظیم کتابخانه‌ها
         sed -i 's/^requirements =.*/requirements = python3,kivy==2.2.1,kivymd==1.1.1,pillow,plyer,pyjnius/g' buildozer.spec
         
-        # --- اصلاح ۲: تایید لایسنس همین‌جا انجام شود ---
+        # پذیرش لایسنس به صورت خودکار
         sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
         
-        # --- اصلاح ۳: غیرفعال کردن تنظیمات امضا در فایل spec ---
-        # این کار باعث می‌شود بیلدوزر فایل را امضا نکند و هنگ نکند
+        # غیرفعال کردن امضای خودکار بیلدوزر (برای جلوگیری از خطاهای اضافی)
         sed -i 's/^android.release.keystore =/# android.release.keystore =/g' buildozer.spec
         sed -i 's/^android.release.keyalias =/# android.release.keyalias =/g' buildozer.spec
 
@@ -64,12 +72,11 @@ jobs:
 
     - name: Build Unsigned APK
       env:
-        # --- اصلاح ۴: محدود کردن رم گریدل برای جلوگیری از کرش ---
-        GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m"
+        # اجبار دوباره تنظیمات رم از طریق متغیر محیطی
+        GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx2048m"
       run: |
         rm -rf .buildozer
-        
-        # ساخت فایل بدون امضا (چون لایسنس را در مرحله قبل True کردیم، سوال نمی‌پرسد)
+        # اجرای بیلد در حالت release اما بدون امضا
         buildozer -v android release
 
     - name: Sign APK Manually
@@ -87,19 +94,8 @@ jobs:
         ZIPALIGN="${BUILD_TOOLS_DIR}zipalign"
         APKSIGNER="${BUILD_TOOLS_DIR}apksigner"
 
-        echo "✅ Zipalign found at: $ZIPALIGN"
-        echo "✅ Apksigner found at: $APKSIGNER"
-
         # ۱. بهینه‌سازی (Zipalign)
         "$ZIPALIGN" -v -p 4 "$UNSIGNED_APK" bin/aligned.apk
 
-        # ۲. امضا کردن دستی (با رمز 123456)
-        "$APKSIGNER" sign --ks my-key.keystore --ks-pass pass:123456 --ks-key-alias my-alias --key-pass pass:123456 --out bin/pomopulse-final.apk bin/aligned.apk
-        
-        echo "🎉 Success! Signed APK created."
-
-    - name: Upload Final APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: package
-        path: bin/pomopulse-final.apk
+        # ۲. امضا کردن دستی
+        "$APKSIGNER" sign --ks my-key.keystore
