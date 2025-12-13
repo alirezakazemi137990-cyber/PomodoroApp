@@ -25,7 +25,6 @@ jobs:
       with:
         python-version: '3.10'
 
-    # --- بدون تغییر: نصب پیش‌نیازها ---
     - name: Install System Dependencies
       run: |
         sudo apt-get update
@@ -37,30 +36,37 @@ jobs:
           libffi-dev libssl-dev libncurses5-dev libsqlite3-dev \
           libreadline-dev libbz2-dev liblzma-dev tk-dev \
           autoconf automake libtool pkg-config cmake zip unzip \
-          libjpeg-dev libfreetype6-dev
+          libjpeg-dev libfreetype6-dev zipalign
 
-    # --- بدون تغییر: کانفیگ اولیه ---
     - name: Configure Buildozer and Dependencies
       run: |
         pip install --upgrade pip
         pip install buildozer "Cython==0.29.36"
 
-        # این دستورات sed تنظیمات buildozer.spec را برای پایداری بیشتر تنظیم می‌کنند
-        # اگر در فایل اصلی تغییر داده باشی، این‌ها دوباره اعمال می‌شوند که امن‌تر است
+        # تنظیمات ورژن اندروید
         sed -i 's/android.api = 34/android.api = 33/g' buildozer.spec
         if ! grep -q "android.api = 33" buildozer.spec; then
           sed -i 's/android.api = .*/android.api = 33/g' buildozer.spec
         fi
 
+        # تنظیم کتابخانه‌ها
         sed -i 's/^requirements =.*/requirements = python3,kivy==2.2.1,kivymd==1.1.1,pillow,plyer,pyjnius/g' buildozer.spec
+        
+        # پذیرش لایسنس
         sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
 
-    # +++ جدید: فقط این مرحله اضافه شده برای خواندن کلید از Secret +++
-    - name: Decode Keystore
+    - name: Decode Keystore & Fix Path
       run: |
+        # 1. ساخت فایل کلید از روی Secret
         echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 --decode > my-key.keystore
+        
+        # 2. نمایش فایل‌ها برای اطمینان (جهت دیباگ)
+        ls -la *.keystore
+        
+        # 3. تغییر آدرس کلید در فایل تنظیمات به آدرس کامل (Absolute Path)
+        # این خط حیاتی است تا بیلدوزر فایل را گم نکند
+        sed -i "s|android.release.keystore = .*|android.release.keystore = $GITHUB_WORKSPACE/my-key.keystore|g" buildozer.spec
 
-    # --- تغییر جزئی: Debug تبدیل شد به Release ---
     - name: Build APK with Buildozer
       run: |
         unset ANDROID_NDK_HOME
