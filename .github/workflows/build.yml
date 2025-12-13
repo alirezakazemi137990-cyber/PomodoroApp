@@ -57,15 +57,18 @@ jobs:
 
     - name: Decode Keystore & Fix Path
       run: |
-        # 1. ساخت فایل کلید از روی Secret
+        # 1. ساخت فایل کلید
         echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 --decode > my-key.keystore
+
+        # 2. تنظیم اجباری آدرس فایل کلید (حتی اگر کامنت شده باشد اصلاح می‌شود)
+        sed -i "s|.*android.release.keystore = .*|android.release.keystore = $GITHUB_WORKSPACE/my-key.keystore|g" buildozer.spec
         
-        # 2. نمایش فایل‌ها برای اطمینان (جهت دیباگ)
-        ls -la *.keystore
+        # 3. تنظیم اجباری نام مستعار (Alias) به my-alias
+        sed -i "s|.*android.release.keyalias = .*|android.release.keyalias = my-alias|g" buildozer.spec
         
-        # 3. تغییر آدرس کلید در فایل تنظیمات به آدرس کامل (Absolute Path)
-        # این خط حیاتی است تا بیلدوزر فایل را گم نکند
-        sed -i "s|android.release.keystore = .*|android.release.keystore = $GITHUB_WORKSPACE/my-key.keystore|g" buildozer.spec
+        # 4. تنظیم اجباری رمز عبورها به 123456
+        sed -i "s|.*android.release.keystore_password = .*|android.release.keystore_password = 123456|g" buildozer.spec
+        sed -i "s|.*android.release.keyalias_password = .*|android.release.keyalias_password = 123456|g" buildozer.spec
 
     - name: Build APK with Buildozer
       run: |
