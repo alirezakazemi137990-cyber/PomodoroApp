@@ -57,37 +57,49 @@ jobs:
 
     - name: Decode Keystore (No Config Injection)
       run: |
-        # 1. فایل کلید را از سکرت می‌سازیم
         echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 --decode > my-key.keystore
+
+    # تغییر به جاوا ۱۱ درست قبل از بیلد (پایدارترین نسخه)
+    - name: Set up Java 11
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: '11'
 
     - name: Build Unsigned APK
       env:
-        # افزایش رم برای جلوگیری از بسته شدن برنامه
         GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2g"
       run: |
-        # 2. غیرفعال کردن تنظیمات امضا در فایل spec (تا بیلدوزر سوال نپرسد و هنگ نکند)
+        # 1. غیرفعال کردن تنظیمات امضا در spec (جلوگیری از هنگ کردن)
         sed -i 's/^android.release.keystore =.*/# android.release.keystore =/g' buildozer.spec
         sed -i 's/^android.release.keyalias =.*/# android.release.keyalias =/g' buildozer.spec
+        
+        # 2. اجبار پذیرش لایسنس در فایل (تا دیگر سوال نپرسد و نیاز به yes نباشد)
+        sed -i 's/.*android.accept_sdk_license =.*/android.accept_sdk_license = True/' buildozer.spec
 
-        # پاکسازی و ساخت فایل خام (بدون امضا)
         rm -rf .buildozer
-        yes | buildozer -v android release
+        
+        # 3. اجرای بیلد بدون "yes" (این کار جلوی ارور Broken Pipe را می‌گیرد)
+        buildozer -v android release
 
     - name: Sign APK Manually
       run: |
         echo "Searching for unsigned APK..."
-        # پیدا کردن فایل خامی که بیلدوزر ساخته
         UNSIGNED_APK=$(find bin -name "*-release-unsigned.apk" | head -n 1)
         
-        # پیدا کردن ابزارهای SDK که نصب شده‌اند
+        # اگر بیلد به هر دلیلی شکست خورد، اینجا مشخص شود
+        if [ -z "$UNSIGNED_APK" ]; then
+           echo "❌ Build failed! No APK found."
+           exit 1
+        fi
+
+        # پیدا کردن ابزارهای اندروید
         BUILD_TOOLS_DIR=$(ls -d ~/.buildozer/android/platform/android-sdk/build-tools/*/ | tail -1)
         ZIPALIGN="${BUILD_TOOLS_DIR}zipalign"
         APKSIGNER="${BUILD_TOOLS_DIR}apksigner"
 
-        # 3. بهینه‌سازی فایل (Zipalign)
+        # بهینه‌سازی و امضا
         "$ZIPALIGN" -v -p 4 "$UNSIGNED_APK" bin/aligned.apk
-
-        # 4. امضا کردن دستی با اطلاعات دقیق شما (رمز 123456)
         "$APKSIGNER" sign --ks my-key.keystore --ks-pass pass:123456 --ks-key-alias my-alias --key-pass pass:123456 --out bin/pomopulse-final.apk bin/aligned.apk
 
     - name: Upload Final APK
@@ -95,3 +107,4 @@ jobs:
       with:
         name: package
         path: bin/pomopulse-final.apk
+
