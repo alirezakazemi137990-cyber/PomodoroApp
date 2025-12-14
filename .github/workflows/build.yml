@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      # 1. نصب پیش‌نیازها (دقیقاً طبق کد سالم شما)
+      # 1. نصب پیش‌نیازهای سیستم (دقیقاً مثل نسخه سالم)
       - name: Install System Dependencies
         run: |
           sudo apt-get update
@@ -21,41 +21,43 @@ jobs:
             zlib1g-dev libtool libtool-bin autoconf automake cmake gettext \
             pkg-config libffi-dev libssl-dev zip unzip
 
-      # 2. پایتون
+      # 2. تنظیم پایتون
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
       
-      # 3. جاوا (نسخه 17 که با Gradle جدید سازگارتر است)
+      # 3. تنظیم جاوا
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      # 4. بیلدوزر (نسخه سایفون طبق کد سالم شما)
+      # 4. نصب بیلدوزر
       - name: Install Buildozer
         run: |
           pip install --upgrade pip
           pip install buildozer cython==0.29.33
 
-      # 5. بیلد و امضا (اینجا فقط امضا را اضافه کردیم)
+      # 5. ساخت و امضای برنامه (اینجا تغییر کرده تا فایل Signed بدهد)
       - name: Build & Sign APK (Release Mode)
         env:
           ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
-        # این خط باعث می‌شود اگر yes ارور داد، بیلد قرمز نشود (راز موفقیت کد قبلی شما)
+        # این خط باعث می‌شود اگر ارورهای الکی داد، نادیده بگیرد (راز موفقیت قبلی)
         continue-on-error: true
         run: |
-          # --- تزریق کلید (بخش اضافه شده) ---
+          # --- مرحله ۱: ساختن فایل کلید از روی کد مخفی ---
           echo "$ANDROID_KEYSTORE_B64" | base64 --decode > keystore.jks
+          
+          # --- مرحله ۲: معرفی رمزها به بیلدوزر ---
           export P4A_RELEASE_KEYSTORE=$(pwd)/keystore.jks
           export P4A_RELEASE_KEYALIAS=my-alias
           export P4A_RELEASE_KEYSTORE_PASSWD=123456
           export P4A_RELEASE_KEYALIAS_PASSWD=123456
 
-          # --- شروع بیلد ---
-          # دستور yes برای تایید لایسنس‌ها ضروری است
+          # --- مرحله ۳: شروع ساخت ---
+          # دستور yes برای تایید خودکار لایسنس‌هاست
           yes | buildozer android release
 
       # 6. آپلود فایل نهایی
