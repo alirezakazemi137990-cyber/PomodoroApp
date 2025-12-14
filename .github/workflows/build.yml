@@ -17,7 +17,7 @@ jobs:
     - name: Set up JDK 17
       uses: actions/setup-java@v3
       with:
-        java-version: '17'   # <--- قبلاً 11 بود، حتماً بکنش 17
+        java-version: '17'
         distribution: 'temurin'
 
     - name: Setup Python
@@ -25,15 +25,7 @@ jobs:
       with:
         python-version: '3.10'
 
-    # ایجاد فایل تنظیمات گریدل برای کنترل رم (حیاتی برای جلوگیری از کرش)
-    - name: Configure Gradle Memory Settings
-      run: |
-        mkdir -p ~/.gradle
-        echo "org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError" > ~/.gradle/gradle.properties
-        echo "org.gradle.daemon=false" >> ~/.gradle/gradle.properties
-        echo "org.gradle.parallel=false" >> ~/.gradle/gradle.properties
-        echo "org.gradle.configureondemand=false" >> ~/.gradle/gradle.properties
-
+    # نصب وابستگی‌های سیستمی (دقیقاً طبق نسخه پایدار)
     - name: Install System Dependencies
       run: |
         sudo apt-get update
@@ -45,63 +37,58 @@ jobs:
           libffi-dev libssl-dev libncurses5-dev libsqlite3-dev \
           libreadline-dev libbz2-dev liblzma-dev tk-dev \
           autoconf automake libtool pkg-config cmake zip unzip \
-          libjpeg-dev libfreetype6-dev zipalign
+          libjpeg-dev libfreetype6-dev
 
-    - name: Configure Buildozer
+    - name: Configure Buildozer and Dependencies
       run: |
         pip install --upgrade pip
+        # نصب نسخه خاص Cython که برای Kivy 2.2.1 الزامی است
         pip install buildozer "Cython==0.29.36"
 
         # تنظیم API روی 33
-        sed -i 's/android.api = .*/android.api = 33/g' buildozer.spec
-        
-        # تنظیم کتابخانه‌ها
+        sed -i 's/android.api = 34/android.api = 33/g' buildozer.spec
+        if ! grep -q "android.api = 33" buildozer.spec; then
+          sed -i 's/android.api = .*/android.api = 33/g' buildozer.spec
+        fi
+
+        # تغییر مهم: استفاده از نسخه‌های پایدار Kivy 2.2.1 و KivyMD 1.1.1
         sed -i 's/^requirements =.*/requirements = python3,kivy==2.2.1,kivymd==1.1.1,pillow,plyer,pyjnius/g' buildozer.spec
-        
-        # پذیرش لایسنس به صورت خودکار
+
+        # اطمینان از پذیرش لایسنس
         sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
-        
-        # غیرفعال کردن امضای خودکار بیلدوزر (برای جلوگیری از خطاهای اضافی)
-        sed -i 's/^android.release.keystore =/# android.release.keystore =/g' buildozer.spec
-        sed -i 's/^android.release.keyalias =/# android.release.keyalias =/g' buildozer.spec
 
-    - name: Decode Keystore
-      run: |
-        echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 --decode > my-key.keystore
-
-    - name: Build & Sign APK (Auto)
+    - name: Build & Sign APK (Release)
       env:
-        # رم را روی 1 گیگ نگه می‌داریم تا با Swap تداخل نکند
-        GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx1024m -XX:MaxMetaspaceSize=384m -Dorg.gradle.workers.max=1"
-        MAKEFLAGS: "-j1"
         ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
       run: |
-        # --- 1. ایجاد حافظه SWAP (حجم 6 گیگ برای اطمینان) ---
-        sudo dd if=/dev/zero of=/swapfile bs=1M count=6144 status=progress
-        sudo chmod 600 /swapfile
-        sudo mkswap /swapfile
-        sudo swapon /swapfile
-        echo "✅ Swap Created (6GB)"
-
-        # --- 2. آماده‌سازی کلید امضا ---
-        echo "$ANDROID_KEYSTORE_B64" | base64 --decode > ${{ github.workspace }}/keystore.jks
+        # --- 1. پاکسازی کامل متغیرهای محیطی (طبق کد پایدار) ---
+        unset ANDROID_NDK_HOME
+        unset ANDROID_NDK_ROOT
+        unset ANDROID_NDK
+        unset ANDROID_SDK_ROOT
+        unset ANDROID_HOME
+        unset ANDROID_NDK_LATEST_HOME
+        unset JAVA_HOME_21_X64
+        unset JAVA_HOME_25_X64
         
-        # --- 3. تنظیمات بیلدوزر و لایسنس‌ها ---
-        # اجبار به پذیرش لایسنس در فایل تنظیمات
-        sed -i 's/android.archs = arm64-v8a, armeabi-v7a/android.archs = arm64-v8a/g' buildozer.spec
-        
-        # پاکسازی برای شروع تمیز
+        # پاکسازی کش بیلدوزر
         rm -rf .buildozer
-        mkdir -p ~/.gradle
         
-        # تنظیم متغیرهای محیطی برای امضای خودکار
-        export P4A_RELEASE_KEYSTORE=${{ github.workspace }}/keystore.jks
+        # --- 2. آماده‌سازی کلید امضا (اضافه شده) ---
+        echo "$ANDROID_KEYSTORE_B64" | base64 --decode > keystore.jks
+        
+        export P4A_RELEASE_KEYSTORE=$(pwd)/keystore.jks
         export P4A_RELEASE_KEYALIAS=my-alias
         export P4A_RELEASE_KEYSTORE_PASSWD=123456
         export P4A_RELEASE_KEYALIAS_PASSWD=123456
         
-        # --- 4. شروع بیلد (با ترفند جلوگیری از Broken Pipe) ---
-        # این دستور می‌گوید: yes اجرا شود، اما اگر پایپ شکست، خطا نده
+        # --- 3. اجرای بیلد Release ---
+        # دستور set +o pipefail باعث می‌شود اگر yes به ارور خورد (چون بیلد تمام شده)، کل پروسه فیل نشود
         set +o pipefail
         yes | buildozer -v android release
 
+    - name: Upload APK Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: package
+        path: bin/*.apk
