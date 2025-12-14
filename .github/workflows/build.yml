@@ -72,12 +72,17 @@ jobs:
 
     - name: Build Unsigned APK
       env:
-        # اجبار دوباره تنظیمات رم از طریق متغیر محیطی
-        GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx2048m"
+        # رم را روی 1.5 گیگ تنظیم می‌کنیم تا جای نفس کشیدن برای سیستم بماند
+        GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=512m"
       run: |
+        # ساخت فایل تنظیمات گریدل برای اطمینان از خاموش بودن Daemon
+        mkdir -p ~/.gradle
+        echo "org.gradle.daemon=false" > ~/.gradle/gradle.properties
+        echo "org.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=512m" >> ~/.gradle/gradle.properties
+        
         rm -rf .buildozer
-        # اجرای بیلد در حالت release اما بدون امضا
         buildozer -v android release
+
 
     - name: Sign APK Manually
       run: |
