@@ -71,13 +71,12 @@ jobs:
 
     - name: Build & Sign APK (Auto)
       env:
-        # تنظیمات رم (حیاتی)
-        GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx1024m -XX:MaxMetaspaceSize=256m -Dorg.gradle.workers.max=1"
+        # رم را کمی افزایش دادیم (1.5 گیگ) چون Swap داریم و مرحله امضا سنگین است
+        GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=512m -Dorg.gradle.workers.max=1"
         MAKEFLAGS: "-j1"
-        # فراخوانی کلید امن از گیت‌هاب
         ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
       run: |
-        # --- 1. ایجاد حافظه SWAP (همان کد موفق قبلی) ---
+        # --- 1. ایجاد حافظه SWAP ---
         sudo dd if=/dev/zero of=/swapfile bs=1M count=4096 status=progress
         sudo chmod 600 /swapfile
         sudo mkswap /swapfile
@@ -85,23 +84,23 @@ jobs:
         echo "✅ Swap Created"
 
         # --- 2. آماده‌سازی کلید امضا ---
-        echo "$ANDROID_KEYSTORE_B64" | base64 --decode > keystore.jks
+        # استفاده از مسیر دقیق گیت‌هاب برای اطمینان صددرصد
+        echo "$ANDROID_KEYSTORE_B64" | base64 --decode > ${{ github.workspace }}/keystore.jks
         
         # --- 3. تنظیمات بیلدوزر ---
-        # فقط معماری 64 بیتی (برای سرعت و سبکی)
         sed -i 's/android.archs = arm64-v8a, armeabi-v7a/android.archs = arm64-v8a/g' buildozer.spec
         
-        # پاکسازی بیلد‌های ناقص قبلی
+        # پاکسازی برای شروع تمیز
         rm -rf .buildozer
         mkdir -p ~/.gradle
         
         # --- 4. شروع بیلد و امضای خودکار ---
-        # این متغیرها باعث می‌شن بیلدوزر خودش فایل رو امضا کنه و دیگه ارور نده
-        export P4A_RELEASE_KEYSTORE=$(pwd)/keystore.jks
+        export P4A_RELEASE_KEYSTORE=${{ github.workspace }}/keystore.jks
         export P4A_RELEASE_KEYALIAS=my-alias
         export P4A_RELEASE_KEYSTORE_PASSWD=123456
         export P4A_RELEASE_KEYALIAS_PASSWD=123456
         
-        # دستور yes برای قبول کردن لایسنس‌ها (خیلی مهم)
-        yes | buildozer -v android release
+        # دستور yes را برداشتیم چون همه چیز تنظیم است
+        buildozer -v android release
+
 
