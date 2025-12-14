@@ -72,24 +72,26 @@ jobs:
 
     - name: Build Unsigned APK
       env:
-        # محدود کردن رم جاوا و تعداد هسته‌ها
+        # تنظیمات سخت‌گیرانه برای کنترل رم
         GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx1024m -XX:MaxMetaspaceSize=256m -Dorg.gradle.workers.max=1"
-        # محدود کردن کامپایلر C به ۱ هسته برای کاهش فشار
         MAKEFLAGS: "-j1"
       run: |
-        # --- حیاتی: ایجاد ۴ گیگابایت رم مجازی (Swap) ---
-        sudo fallocate -l 4G /swapfile
+        # --- 1. ایجاد حافظه SWAP با روش dd (پایدارتر از fallocate) ---
+        sudo dd if=/dev/zero of=/swapfile bs=1M count=4096 status=progress
         sudo chmod 600 /swapfile
         sudo mkswap /swapfile
         sudo swapon /swapfile
-        echo "Swap Enabled. Memory Status:"
-        free -h
+        echo "✅ Swap Created Successfully"
         # ---------------------------------------------
+
+        # --- 2. تغییر حیاتی: حذف معماری قدیمی 32 بیتی ---
+        # این کار بار پردازش و مصرف رم را نصف می‌کند
+        sed -i 's/android.archs = arm64-v8a, armeabi-v7a/android.archs = arm64-v8a/g' buildozer.spec
 
         # تنظیمات گریدل
         mkdir -p ~/.gradle
         echo "org.gradle.daemon=false" > ~/.gradle/gradle.properties
-        echo "org.gradle.jvmargs=-Xmx1024m -XX:MaxMetaspaceSize=256m" >> ~/.gradle/gradle.properties
+        echo "org.gradle.jvmargs=-Xmx1024m" >> ~/.gradle/gradle.properties
         echo "org.gradle.workers.max=1" >> ~/.gradle/gradle.properties
         
         # شروع بیلد
