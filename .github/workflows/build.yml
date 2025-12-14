@@ -72,16 +72,27 @@ jobs:
 
     - name: Build Unsigned APK
       env:
-        # رم را به 1 گیگ کاهش دادیم و تعداد Workerها را به 1 محدود کردیم (حیاتی برای جلوگیری از کرش)
+        # محدود کردن رم جاوا و تعداد هسته‌ها
         GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx1024m -XX:MaxMetaspaceSize=256m -Dorg.gradle.workers.max=1"
+        # محدود کردن کامپایلر C به ۱ هسته برای کاهش فشار
+        MAKEFLAGS: "-j1"
       run: |
+        # --- حیاتی: ایجاد ۴ گیگابایت رم مجازی (Swap) ---
+        sudo fallocate -l 4G /swapfile
+        sudo chmod 600 /swapfile
+        sudo mkswap /swapfile
+        sudo swapon /swapfile
+        echo "Swap Enabled. Memory Status:"
+        free -h
+        # ---------------------------------------------
+
+        # تنظیمات گریدل
         mkdir -p ~/.gradle
         echo "org.gradle.daemon=false" > ~/.gradle/gradle.properties
-        # تنظیم محدودیت رم و تک‌هسته‌ای بودن برای جلوگیری از پر شدن حافظه
         echo "org.gradle.jvmargs=-Xmx1024m -XX:MaxMetaspaceSize=256m" >> ~/.gradle/gradle.properties
         echo "org.gradle.workers.max=1" >> ~/.gradle/gradle.properties
-        echo "org.gradle.parallel=false" >> ~/.gradle/gradle.properties
         
+        # شروع بیلد
         rm -rf .buildozer
         buildozer -v android release
 
