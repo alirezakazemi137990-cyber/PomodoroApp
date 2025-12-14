@@ -69,51 +69,39 @@ jobs:
       run: |
         echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 --decode > my-key.keystore
 
-    - name: Build Unsigned APK
+    - name: Build & Sign APK (Auto)
       env:
-        # رم را روی ۱۰۲۴ نگه می‌داریم چون Swap داریم
+        # تنظیمات رم (حیاتی)
         GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx1024m -XX:MaxMetaspaceSize=256m -Dorg.gradle.workers.max=1"
         MAKEFLAGS: "-j1"
+        # فراخوانی کلید امن از گیت‌هاب
+        ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
       run: |
-        # --- 1. ایجاد حافظه SWAP (حیاتی) ---
+        # --- 1. ایجاد حافظه SWAP (همان کد موفق قبلی) ---
         sudo dd if=/dev/zero of=/swapfile bs=1M count=4096 status=progress
         sudo chmod 600 /swapfile
         sudo mkswap /swapfile
         sudo swapon /swapfile
-        echo "✅ Swap Created Successfully"
+        echo "✅ Swap Created"
+
+        # --- 2. آماده‌سازی کلید امضا ---
+        echo "$ANDROID_KEYSTORE_B64" | base64 --decode > keystore.jks
         
-        # --- 2. پاکسازی کش‌های قدیمی و خراب ---
-        rm -rf ~/.gradle/caches/
-        mkdir -p ~/.gradle
-        echo "org.gradle.daemon=false" > ~/.gradle/gradle.properties
-        echo "org.gradle.jvmargs=-Xmx1024m" >> ~/.gradle/gradle.properties
-        
-        # --- 3. تنظیم بیلد فقط برای معماری arm64 (افزایش سرعت و کاهش فشار) ---
+        # --- 3. تنظیمات بیلدوزر ---
+        # فقط معماری 64 بیتی (برای سرعت و سبکی)
         sed -i 's/android.archs = arm64-v8a, armeabi-v7a/android.archs = arm64-v8a/g' buildozer.spec
-
-        # --- 4. شروع بیلد ---
-        # حذف پوشه بیلدوزر برای جلوگیری از تداخل فایل‌های ناقص قبلی
-        rm -rf .buildozer
-        buildozer -v android release
-
-
-    - name: Sign APK Manually
-      run: |
-        echo "Searching for unsigned APK..."
-        UNSIGNED_APK=$(find bin -name "*-release-unsigned.apk" | head -n 1)
         
-        if [ -z "$UNSIGNED_APK" ]; then
-          echo "❌ Build Failed! Unsigned APK not found."
-          exit 1
-        fi
+        # پاکسازی بیلد‌های ناقص قبلی
+        rm -rf .buildozer
+        mkdir -p ~/.gradle
+        
+        # --- 4. شروع بیلد و امضای خودکار ---
+        # این متغیرها باعث می‌شن بیلدوزر خودش فایل رو امضا کنه و دیگه ارور نده
+        export P4A_RELEASE_KEYSTORE=$(pwd)/keystore.jks
+        export P4A_RELEASE_KEYALIAS=my-alias
+        export P4A_RELEASE_KEYSTORE_PASSWD=123456
+        export P4A_RELEASE_KEYALIAS_PASSWD=123456
+        
+        # دستور yes برای قبول کردن لایسنس‌ها (خیلی مهم)
+        yes | buildozer -v android release
 
-        # پیدا کردن ابزارهای SDK
-        BUILD_TOOLS_DIR=$(ls -d ~/.buildozer/android/platform/android-sdk/build-tools/*/ | tail -1)
-        ZIPALIGN="${BUILD_TOOLS_DIR}zipalign"
-        APKSIGNER="${BUILD_TOOLS_DIR}apksigner"
-
-        # ۱. بهینه‌سازی (Zipalign)
-        "$ZIPALIGN" -v -p 4 "$UNSIGNED_APK" bin/aligned.apk
-
-        # ۲. امضا کردن دستی
-        "$APKSIGNER" sign --ks my-key.keystore
