@@ -72,13 +72,15 @@ jobs:
 
     - name: Build Unsigned APK
       env:
-        # رم را روی 1.5 گیگ تنظیم می‌کنیم تا جای نفس کشیدن برای سیستم بماند
-        GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=512m"
+        # رم را به 1 گیگ کاهش دادیم و تعداد Workerها را به 1 محدود کردیم (حیاتی برای جلوگیری از کرش)
+        GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx1024m -XX:MaxMetaspaceSize=256m -Dorg.gradle.workers.max=1"
       run: |
-        # ساخت فایل تنظیمات گریدل برای اطمینان از خاموش بودن Daemon
         mkdir -p ~/.gradle
         echo "org.gradle.daemon=false" > ~/.gradle/gradle.properties
-        echo "org.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=512m" >> ~/.gradle/gradle.properties
+        # تنظیم محدودیت رم و تک‌هسته‌ای بودن برای جلوگیری از پر شدن حافظه
+        echo "org.gradle.jvmargs=-Xmx1024m -XX:MaxMetaspaceSize=256m" >> ~/.gradle/gradle.properties
+        echo "org.gradle.workers.max=1" >> ~/.gradle/gradle.properties
+        echo "org.gradle.parallel=false" >> ~/.gradle/gradle.properties
         
         rm -rf .buildozer
         buildozer -v android release
