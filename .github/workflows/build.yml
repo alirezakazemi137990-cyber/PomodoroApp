@@ -57,9 +57,20 @@ jobs:
         # اطمینان از پذیرش لایسنس
         sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
 
-    - name: Build APK with Buildozer
+    - name: Build & Sign Release APK
+      env:
+        ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
       run: |
-        # پاکسازی متغیرهای محیطی برای جلوگیری از تداخل
+        # ساخت فایل کلید
+        echo "$ANDROID_KEYSTORE_B64" | base64 --decode > keystore.jks
+
+        # تنظیم مشخصات امضا در buildozer.spec
+        sed -i "s|^#keystore.filename =.*|keystore.filename = $(pwd)/keystore.jks|" buildozer.spec
+        sed -i "s|^#keystore.alias =.*|keystore.alias = my-alias|" buildozer.spec
+        sed -i "s|^#keystore.password =.*|keystore.password = 123456|" buildozer.spec
+        sed -i "s|^#keystore.alias_password =.*|keystore.alias_password = 123456|" buildozer.spec
+
+        # پاکسازی متغیرهای مزاحم (طبق نسخه موفق)
         unset ANDROID_NDK_HOME
         unset ANDROID_NDK_ROOT
         unset ANDROID_NDK
@@ -69,35 +80,14 @@ jobs:
         unset JAVA_HOME_21_X64
         unset JAVA_HOME_25_X64
         
-        # پاکسازی کش قبلی
         rm -rf .buildozer
         
-        # شروع بیلد با ارسال "y" برای سوالات احتمالی
-        # استفاده از Kivy 2.2.1 پایداری را تضمین می‌کند
-        echo "y" | buildozer -v android debug
-
-
-    - name: Build APK with Buildozer
-      run: |
-        # --- پاکسازی کامل متغیرهای محیطی سیستم ---
-        unset ANDROID_NDK_HOME
-        unset ANDROID_NDK_ROOT
-        unset ANDROID_NDK
-        unset ANDROID_SDK_ROOT
-        unset ANDROID_HOME
-        unset ANDROID_NDK_LATEST_HOME
-        
-        unset JAVA_HOME_21_X64
-        unset JAVA_HOME_25_X64
-        
-        rm -rf .buildozer
-        
-        # استفاده از yes برای تایید دانلودهای احتمالی buildozer (مثل NDK)
-        # استفاده از echo y | امن‌تر از yes | خالی است چون لوپ بی‌نهایت نمی‌سازد
-        echo "y" | buildozer -v android debug
+        # اجرای دستور نهایی Release
+        yes | buildozer -v android release
 
     - name: Upload APK Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: package
         path: bin/*.apk
+
