@@ -60,24 +60,46 @@ jobs:
       env:
         ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
       run: |
-        # جلوگیری از توقف زودرس
+        # جلوگیری از توقف بیلد به خاطر ارور yes
         set +o pipefail
 
         # 1. ساخت فایل کلید
         echo "$ANDROID_KEYSTORE_B64" | base64 --decode > ${GITHUB_WORKSPACE}/keystore.jks
         ls -lh ${GITHUB_WORKSPACE}/keystore.jks
 
-        # 2. جراحی دقیق فایل buildozer.spec (روش تضمینی)
-        # قدم الف: حذف هرگونه تنظیمات قبلی کیستور (چه کامنت، چه فعال) تا تداخل پیش نیاید
-        sed -i '/keystore.filename/d' buildozer.spec
-        sed -i '/keystore.alias/d' buildozer.spec
-        sed -i '/keystore.password/d' buildozer.spec
-        
-        # قدم ب: تزریق تنظیمات جدید و تمیز دقیقاً زیر خط [app]
-        # این کار باعث می‌شود تنظیمات در بالاترین اولویت قرار بگیرند
-        sed -i "s|\[app\]|\[app\]\nkeystore.filename = ${GITHUB_WORKSPACE}/keystore.jks\nkeystore.alias = my-alias\nkeystore.password = 123456\nkeystore.alias_password = 123456|" buildozer.spec
+        # 2. جراحی فایل buildozer.spec با پایتون (روش تضمینی حذف و اضافه)
+        # این اسکریپت فایل را می‌خواند، خطوط تکراری کیستور را حذف می‌کند و تنظیمات جدید را می‌نویسد.
+        cat <<EOF > update_spec.py
+        import os
 
-        # 3. چک کردن فایل برای اطمینان (20 خط اول را چاپ می‌کنیم تا ببینیم تزریق شده)
+        # خواندن فایل اصلی
+        with open("buildozer.spec", "r") as f:
+            lines = f.readlines()
+
+        workspace = os.environ.get('GITHUB_WORKSPACE')
+
+        # نوشتن فایل جدید
+        with open("buildozer.spec", "w") as f:
+            for line in lines:
+                # اگر خط مربوط به تنظیمات قدیمی کیستور بود، آن را ننویس (حذف کن)
+                if "keystore.filename" in line or "keystore.alias" in line or "keystore.password" in line or "keystore.alias_password" in line:
+                    continue
+                
+                # نوشتن خطوط عادی فایل
+                f.write(line)
+                
+                # اگر به خط [app] رسیدیم، تنظیمات جدید را بلافاصله زیر آن تزریق کن
+                if line.strip() == "[app]":
+                    f.write(f"keystore.filename = {workspace}/keystore.jks\n")
+                    f.write("keystore.alias = my-alias\n")
+                    f.write("keystore.password = 123456\n")
+                    f.write("keystore.alias_password = 123456\n")
+        EOF
+
+        # اجرای اسکریپت جراحی
+        python3 update_spec.py
+
+        # 3. چک کردن فایل برای اطمینان (چاپ 20 خط اول)
         echo "--- Checking Spec File Head ---"
         head -n 20 buildozer.spec
         echo "-----------------------------"
@@ -86,7 +108,8 @@ jobs:
         unset ANDROID_NDK_HOME ANDROID_NDK_ROOT ANDROID_NDK ANDROID_SDK_ROOT ANDROID_HOME
         rm -rf .buildozer
         
-        # 5. اجرا (با yes برای لایسنس‌ها)
+        # 5. اجرا
         yes | buildozer -v android release
+
 
 
