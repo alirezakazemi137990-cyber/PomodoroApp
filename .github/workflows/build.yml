@@ -1,69 +1,103 @@
-name: Build APK
+name: Build Android APK
+
 on:
   push:
-    branches: [ master, main ]
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
 
 jobs:
   build:
     runs-on: ubuntu-22.04
 
     steps:
-      - uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      # 1. نصب پیش‌نیازهای سیستم (دقیقاً مثل نسخه سالم)
-      - name: Install System Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential git ffmpeg \
-            libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
-            libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev \
-            zlib1g-dev libtool libtool-bin autoconf automake cmake gettext \
-            pkg-config libffi-dev libssl-dev zip unzip
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
 
-      # 2. تنظیم پایتون
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-      
-      # 3. تنظیم جاوا
-      - name: Setup Java
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '17'
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
 
-      # 4. نصب بیلدوزر
-      - name: Install Buildozer
-        run: |
-          pip install --upgrade pip
-          pip install buildozer cython==0.29.33
+    # اضافه شدن gettext و gperf برای حل مشکلات کامپایل احتمالی
+    - name: Install System Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential git ffmpeg gettext gperf \
+          libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
+          libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev \
+          zlib1g-dev libltdl-dev \
+          libffi-dev libssl-dev libncurses5-dev libsqlite3-dev \
+          libreadline-dev libbz2-dev liblzma-dev tk-dev \
+          autoconf automake libtool pkg-config cmake zip unzip \
+          libjpeg-dev libfreetype6-dev
 
-      # 5. ساخت و امضای برنامه (اینجا تغییر کرده تا فایل Signed بدهد)
-      - name: Build & Sign APK (Release Mode)
-        env:
-          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
-        # این خط باعث می‌شود اگر ارورهای الکی داد، نادیده بگیرد (راز موفقیت قبلی)
-        continue-on-error: true
-        run: |
-          # --- مرحله ۱: ساختن فایل کلید از روی کد مخفی ---
-          echo "$ANDROID_KEYSTORE_B64" | base64 --decode > keystore.jks
-          
-          # --- مرحله ۲: معرفی رمزها به بیلدوزر ---
-          export P4A_RELEASE_KEYSTORE=$(pwd)/keystore.jks
-          export P4A_RELEASE_KEYALIAS=my-alias
-          export P4A_RELEASE_KEYSTORE_PASSWD=123456
-          export P4A_RELEASE_KEYALIAS_PASSWD=123456
+    - name: Configure Buildozer and Dependencies
+      run: |
+        pip install --upgrade pip
+        # نصب نسخه خاص Cython که برای Kivy 2.2.1 الزامی است
+        pip install buildozer "Cython==0.29.36"
 
-          # --- مرحله ۳: شروع ساخت ---
-          # دستور yes برای تایید خودکار لایسنس‌هاست
-          yes | buildozer android release
+        # تنظیم API روی 33
+        sed -i 's/android.api = 34/android.api = 33/g' buildozer.spec
+        if ! grep -q "android.api = 33" buildozer.spec; then
+          sed -i 's/android.api = .*/android.api = 33/g' buildozer.spec
+        fi
 
-      # 6. آپلود فایل نهایی
-      - name: Upload Artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pomodoro-release-signed
-          path: bin/*.apk
+        # --- تغییر مهم: استفاده از نسخه‌های پایدار Kivy 2.2.1 و KivyMD 1.1.1 ---
+        sed -i 's/^requirements =.*/requirements = python3,kivy==2.2.1,kivymd==1.1.1,pillow,plyer,pyjnius/g' buildozer.spec
+
+        # اطمینان از پذیرش لایسنس
+        sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
+
+    - name: Build APK with Buildozer
+      run: |
+        # پاکسازی متغیرهای محیطی برای جلوگیری از تداخل
+        unset ANDROID_NDK_HOME
+        unset ANDROID_NDK_ROOT
+        unset ANDROID_NDK
+        unset ANDROID_SDK_ROOT
+        unset ANDROID_HOME
+        unset ANDROID_NDK_LATEST_HOME
+        unset JAVA_HOME_21_X64
+        unset JAVA_HOME_25_X64
+        
+        # پاکسازی کش قبلی
+        rm -rf .buildozer
+        
+        # شروع بیلد با ارسال "y" برای سوالات احتمالی
+        # استفاده از Kivy 2.2.1 پایداری را تضمین می‌کند
+        echo "y" | buildozer -v android debug
+
+
+    - name: Build APK with Buildozer
+      run: |
+        # --- پاکسازی کامل متغیرهای محیطی سیستم ---
+        unset ANDROID_NDK_HOME
+        unset ANDROID_NDK_ROOT
+        unset ANDROID_NDK
+        unset ANDROID_SDK_ROOT
+        unset ANDROID_HOME
+        unset ANDROID_NDK_LATEST_HOME
+        
+        unset JAVA_HOME_21_X64
+        unset JAVA_HOME_25_X64
+        
+        rm -rf .buildozer
+        
+        # استفاده از yes برای تایید دانلودهای احتمالی buildozer (مثل NDK)
+        # استفاده از echo y | امن‌تر از yes | خالی است چون لوپ بی‌نهایت نمی‌سازد
+        echo "y" | buildozer -v android debug
+
+    - name: Upload APK Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: package
+        path: bin/*.apk
