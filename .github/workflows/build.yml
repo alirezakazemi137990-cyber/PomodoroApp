@@ -61,16 +61,22 @@ jobs:
       env:
         ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
       run: |
-        # ساخت فایل کلید
-        echo "$ANDROID_KEYSTORE_B64" | base64 --decode > keystore.jks
+        # جلوگیری از توقف بیلد به خاطر ارور Broken Pipe دستور yes
+        set +o pipefail
 
-        # تنظیم مشخصات امضا در buildozer.spec
-        sed -i "s|^#keystore.filename =.*|keystore.filename = $(pwd)/keystore.jks|" buildozer.spec
+        # 1. ساخت فایل کلید
+        echo "$ANDROID_KEYSTORE_B64" | base64 --decode > ${GITHUB_WORKSPACE}/keystore.jks
+        
+        # چک کردن اینکه فایل واقعا ساخته شده (برای اطمینان)
+        ls -lh ${GITHUB_WORKSPACE}/keystore.jks
+
+        # 2. تزریق مشخصات امضا با مسیر مطلق (Absolute Path)
+        sed -i "s|^#keystore.filename =.*|keystore.filename = ${GITHUB_WORKSPACE}/keystore.jks|" buildozer.spec
         sed -i "s|^#keystore.alias =.*|keystore.alias = my-alias|" buildozer.spec
         sed -i "s|^#keystore.password =.*|keystore.password = 123456|" buildozer.spec
         sed -i "s|^#keystore.alias_password =.*|keystore.alias_password = 123456|" buildozer.spec
 
-        # پاکسازی متغیرهای مزاحم (طبق نسخه موفق)
+        # 3. پاکسازی متغیرهای مزاحم
         unset ANDROID_NDK_HOME
         unset ANDROID_NDK_ROOT
         unset ANDROID_NDK
@@ -82,12 +88,7 @@ jobs:
         
         rm -rf .buildozer
         
-        # اجرای دستور نهایی Release
+        # 4. اجرای دستور Release (با yes اما کنترل شده)
         yes | buildozer -v android release
 
-    - name: Upload APK Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: package
-        path: bin/*.apk
 
