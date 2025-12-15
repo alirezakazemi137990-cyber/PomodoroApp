@@ -56,27 +56,32 @@ jobs:
 
         # اطمینان از پذیرش لایسنس
         sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
-
     - name: Build & Sign Release APK
       env:
         ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
       run: |
-        # جلوگیری از توقف بیلد به خاطر ارور Broken Pipe دستور yes
+        # جلوگیری از توقف اگر yes ارور داد
         set +o pipefail
 
-        # 1. ساخت فایل کلید
+        # 1. ساخت فایل کلید در مسیر اصلی پروژه
         echo "$ANDROID_KEYSTORE_B64" | base64 --decode > ${GITHUB_WORKSPACE}/keystore.jks
         
-        # چک کردن اینکه فایل واقعا ساخته شده (برای اطمینان)
+        # تایید وجود فایل
         ls -lh ${GITHUB_WORKSPACE}/keystore.jks
 
-        # 2. تزریق مشخصات امضا با مسیر مطلق (Absolute Path)
-        sed -i "s|^#keystore.filename =.*|keystore.filename = ${GITHUB_WORKSPACE}/keystore.jks|" buildozer.spec
-        sed -i "s|^#keystore.alias =.*|keystore.alias = my-alias|" buildozer.spec
-        sed -i "s|^#keystore.password =.*|keystore.password = 123456|" buildozer.spec
-        sed -i "s|^#keystore.alias_password =.*|keystore.alias_password = 123456|" buildozer.spec
+        # 2. تزریق تنظیمات امضا با قدرت (Regex بسیار قوی)
+        # این دستورات هر خطی که شبیه تنظیمات کیستور باشد را پیدا و جایگزین می‌کنند
+        sed -i 's|.*keystore.filename.*=.*|keystore.filename = '"${GITHUB_WORKSPACE}/keystore.jks"'|g' buildozer.spec
+        sed -i 's|.*keystore.alias.*=.*|keystore.alias = my-alias|g' buildozer.spec
+        sed -i 's|.*keystore.password.*=.*|keystore.password = 123456|g' buildozer.spec
+        sed -i 's|.*keystore.alias_password.*=.*|keystore.alias_password = 123456|g' buildozer.spec
 
-        # 3. پاکسازی متغیرهای مزاحم
+        # 3. چاپ تنظیمات برای اطمینان (در لاگ چک کن که مقادیر درست باشند)
+        echo "--- Checking buildozer.spec keystore settings ---"
+        grep "keystore" buildozer.spec
+        echo "-------------------------------------------------"
+
+        # 4. پاکسازی متغیرهای محیطی مزاحم
         unset ANDROID_NDK_HOME
         unset ANDROID_NDK_ROOT
         unset ANDROID_NDK
@@ -88,7 +93,13 @@ jobs:
         
         rm -rf .buildozer
         
-        # 4. اجرای دستور Release (با yes اما کنترل شده)
+        # 5. اجرای دستور Release
         yes | buildozer -v android release
+
+    - name: Upload APK Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: package
+        path: bin/*.apk
 
 
