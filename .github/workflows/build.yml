@@ -60,46 +60,33 @@ jobs:
       env:
         ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
       run: |
-        # جلوگیری از توقف اگر yes ارور داد
+        # جلوگیری از توقف زودرس
         set +o pipefail
 
-        # 1. ساخت فایل کلید در مسیر اصلی پروژه
+        # 1. ساخت فایل کلید
         echo "$ANDROID_KEYSTORE_B64" | base64 --decode > ${GITHUB_WORKSPACE}/keystore.jks
-        
-        # تایید وجود فایل
         ls -lh ${GITHUB_WORKSPACE}/keystore.jks
 
-        # 2. تزریق تنظیمات امضا با قدرت (Regex بسیار قوی)
-        # این دستورات هر خطی که شبیه تنظیمات کیستور باشد را پیدا و جایگزین می‌کنند
-        sed -i 's|.*keystore.filename.*=.*|keystore.filename = '"${GITHUB_WORKSPACE}/keystore.jks"'|g' buildozer.spec
-        sed -i 's|.*keystore.alias.*=.*|keystore.alias = my-alias|g' buildozer.spec
-        sed -i 's|.*keystore.password.*=.*|keystore.password = 123456|g' buildozer.spec
-        sed -i 's|.*keystore.alias_password.*=.*|keystore.alias_password = 123456|g' buildozer.spec
-
-        # 3. چاپ تنظیمات برای اطمینان (در لاگ چک کن که مقادیر درست باشند)
-        echo "--- Checking buildozer.spec keystore settings ---"
-        grep "keystore" buildozer.spec
-        echo "-------------------------------------------------"
-
-        # 4. پاکسازی متغیرهای محیطی مزاحم
-        unset ANDROID_NDK_HOME
-        unset ANDROID_NDK_ROOT
-        unset ANDROID_NDK
-        unset ANDROID_SDK_ROOT
-        unset ANDROID_HOME
-        unset ANDROID_NDK_LATEST_HOME
-        unset JAVA_HOME_21_X64
-        unset JAVA_HOME_25_X64
+        # 2. جراحی دقیق فایل buildozer.spec (روش تضمینی)
+        # قدم الف: حذف هرگونه تنظیمات قبلی کیستور (چه کامنت، چه فعال) تا تداخل پیش نیاید
+        sed -i '/keystore.filename/d' buildozer.spec
+        sed -i '/keystore.alias/d' buildozer.spec
+        sed -i '/keystore.password/d' buildozer.spec
         
+        # قدم ب: تزریق تنظیمات جدید و تمیز دقیقاً زیر خط [app]
+        # این کار باعث می‌شود تنظیمات در بالاترین اولویت قرار بگیرند
+        sed -i "s|\[app\]|\[app\]\nkeystore.filename = ${GITHUB_WORKSPACE}/keystore.jks\nkeystore.alias = my-alias\nkeystore.password = 123456\nkeystore.alias_password = 123456|" buildozer.spec
+
+        # 3. چک کردن فایل برای اطمینان (20 خط اول را چاپ می‌کنیم تا ببینیم تزریق شده)
+        echo "--- Checking Spec File Head ---"
+        head -n 20 buildozer.spec
+        echo "-----------------------------"
+
+        # 4. پاکسازی محیط
+        unset ANDROID_NDK_HOME ANDROID_NDK_ROOT ANDROID_NDK ANDROID_SDK_ROOT ANDROID_HOME
         rm -rf .buildozer
         
-        # 5. اجرای دستور Release
+        # 5. اجرا (با yes برای لایسنس‌ها)
         yes | buildozer -v android release
-
-    - name: Upload APK Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: package
-        path: bin/*.apk
 
 
