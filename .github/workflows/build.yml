@@ -60,13 +60,15 @@ jobs:
       env:
         ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
       run: |
-        # 1. ساخت فایل کلید در مسیر جاری
+        set +o pipefail
+        
+        # 1. ساخت فایل کلید
         echo "$ANDROID_KEYSTORE_B64" | base64 --decode > keystore.jks
         
-        # 2. پیدا کردن نام مستعار (Alias)
-        export MY_PASS="123456"
+        # 2. پیدا کردن Alias
+        MY_PASS="123456"
         echo "--- Detecting Alias ---"
-        export DETECTED_ALIAS=$(keytool -list -v -keystore keystore.jks -storepass "$MY_PASS" | grep "Alias name:" | head -n 1 | sed 's/Alias name: //g' | xargs)
+        DETECTED_ALIAS=$(keytool -list -v -keystore keystore.jks -storepass "$MY_PASS" | grep "Alias name:" | head -n 1 | sed 's/Alias name: //g' | xargs)
         
         if [ -z "$DETECTED_ALIAS" ]; then
           echo "FATAL ERROR: Alias not found!"
@@ -74,19 +76,21 @@ jobs:
         fi
         echo "Found Alias: $DETECTED_ALIAS"
 
-        # 3. اجرای اسکریپت پایتون (با انتقال صحیح متغیرها)
+        # 3. اسکریپت پایتون (تزریق مستقیم متغیرها برای اطمینان صددرصد)
         cat <<EOF > update_spec.py
         import os
         
-        # دریافت متغیرها از محیط سیستم (روش امن)
-        alias = os.environ['DETECTED_ALIAS']
-        password = os.environ['MY_PASS']
+        # مقادیر زیر مستقیماً توسط شل در اینجا نوشته می‌شوند (تزریق مقدار)
+        alias = "$DETECTED_ALIAS"
+        password = "$MY_PASS"
+        workspace = "${GITHUB_WORKSPACE}"
         
+        # استفاده از آدرس کامل (Absolute Path) برای جلوگیری از گم شدن فایل
         new_config = [
-            "keystore.filename = ./keystore.jks\n",
-            f"keystore.alias = {alias}\n",
-            f"keystore.password = {password}\n",
-            f"keystore.alias_password = {password}\n"
+            "keystore.filename = " + workspace + "/keystore.jks\n",
+            "keystore.alias = " + alias + "\n",
+            "keystore.password = " + password + "\n",
+            "keystore.alias_password = " + password + "\n"
         ]
 
         # خواندن و بازنویسی فایل buildozer.spec
@@ -95,7 +99,7 @@ jobs:
 
         with open("buildozer.spec", "w") as f:
             for line in lines:
-                # حذف خطوط قدیمی مربوط به keystore
+                # حذف تنظیمات قدیمی
                 if any(k in line for k in ["keystore.filename", "keystore.alias", "keystore.password", "keystore.alias_password"]):
                     continue
                 
@@ -107,12 +111,11 @@ jobs:
                         f.write(cfg)
         EOF
         
+        # اجرای اسکریپت اصلاح‌گر
         python3 update_spec.py
 
-        # 4. شروع بیلد
+        # 4. شروع بیلد (با بازگشت yes چون مشکل کرش حل شده است)
         rm -rf .buildozer
-        # دستور yes را برمی‌گردانیم تا اگر لایسنس خواست گیر نکند، اما با set +o pipefail از ارور کاذب جلوگیری می‌کنیم
-        set +o pipefail
         yes | buildozer -v android release
 
 
