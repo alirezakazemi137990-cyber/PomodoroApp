@@ -57,66 +57,59 @@ jobs:
         # اطمینان از پذیرش لایسنس
         sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
         
-    - name: Build & Sign Release APK
+    - name: Build Stable & Sign Manually
       env:
         ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
       run: |
-        set +o pipefail
+        set -e  # توقف فوری در صورت بروز خطا
         
-        # 1. ساخت فایل کلید
+        # 1. آماده‌سازی کلید
         echo "$ANDROID_KEYSTORE_B64" | base64 --decode > keystore.jks
-        
-        # 2. پیدا کردن Alias
         MY_PASS="123456"
+        
+        # 2. پیدا کردن Alias به صورت خودکار
         echo "--- Detecting Alias ---"
         DETECTED_ALIAS=$(keytool -list -v -keystore keystore.jks -storepass "$MY_PASS" | grep "Alias name:" | head -n 1 | sed 's/Alias name: //g' | xargs)
-        
-        if [ -z "$DETECTED_ALIAS" ]; then
-          echo "FATAL ERROR: Alias not found!"
-          exit 1
-        fi
         echo "Found Alias: $DETECTED_ALIAS"
 
-        # 3. اسکریپت پایتون (تزریق مستقیم متغیرها برای اطمینان صددرصد)
-        cat <<EOF > update_spec.py
-        import os
-        
-        # مقادیر زیر مستقیماً توسط شل در اینجا نوشته می‌شوند (تزریق مقدار)
-        alias = "$DETECTED_ALIAS"
-        password = "$MY_PASS"
-        workspace = "${GITHUB_WORKSPACE}"
-        
-        # استفاده از آدرس کامل (Absolute Path) برای جلوگیری از گم شدن فایل
-        new_config = [
-            "keystore.filename = " + workspace + "/keystore.jks\n",
-            "keystore.alias = " + alias + "\n",
-            "keystore.password = " + password + "\n",
-            "keystore.alias_password = " + password + "\n"
-        ]
-
-        # خواندن و بازنویسی فایل buildozer.spec
-        with open("buildozer.spec", "r") as f:
-            lines = f.readlines()
-
-        with open("buildozer.spec", "w") as f:
-            for line in lines:
-                # حذف تنظیمات قدیمی
-                if any(k in line for k in ["keystore.filename", "keystore.alias", "keystore.password", "keystore.alias_password"]):
-                    continue
-                
-                f.write(line)
-                
-                # تزریق تنظیمات جدید
-                if line.strip() == "[app]":
-                    for cfg in new_config:
-                        f.write(cfg)
-        EOF
-        
-        # اجرای اسکریپت اصلاح‌گر
-        python3 update_spec.py
-
-        # 4. شروع بیلد (با بازگشت yes چون مشکل کرش حل شده است)
+        # 3. ساخت APK در حالت پایدار (Debug)
+        # نکته: چون حالت Release کرش می‌کرد، از حالت Debug که سالم است استفاده می‌کنیم
         rm -rf .buildozer
-        yes | buildozer -v android release
+        yes | buildozer -v android debug
+
+        # 4. پیدا کردن ابزارهای امضا (Zipalign و Apksigner)
+        echo "--- Locating Signing Tools ---"
+        SDK_ROOT=~/.buildozer/android/platform/android-sdk
+        ZIPALIGN=$(find $SDK_ROOT -name zipalign | sort -r | head -n 1)
+        APKSIGNER=$(find $SDK_ROOT -name apksigner | sort -r | head -n 1)
+        
+        if [ -z "$ZIPALIGN" ] || [ -z "$APKSIGNER" ]; then
+            echo "Error: Could not find zipalign or apksigner!"
+            exit 1
+        fi
+        echo "Tools found."
+
+        # 5. پردازش و امضای نهایی APK
+        INPUT_APK=$(find bin -name "*-debug.apk" | head -n 1)
+        if [ -z "$INPUT_APK" ]; then
+            echo "Error: APK build failed (no file found)."
+            exit 1
+        fi
+        
+        echo "Processing APK: $INPUT_APK"
+        
+        # مرحله الف: بهینه‌سازی فایل (Align)
+        $ZIPALIGN -v -p 4 "$INPUT_APK" release-aligned.apk
+        
+        # مرحله ب: امضا با کلید اصلی (Sign)
+        $APKSIGNER sign --ks keystore.jks --ks-pass pass:"$MY_PASS" --ks-key-alias "$DETECTED_ALIAS" --out release-signed.apk release-aligned.apk
+        
+        # تایید نهایی
+        $APKSIGNER verify release-signed.apk
+        
+        echo "SUCCESS! Signed APK is ready."
+        
+        # انتقال فایل نهایی به پوشه bin برای دانلود
+        mv release-signed.apk bin/Pomodoro-Final-Signed.apk
 
 
