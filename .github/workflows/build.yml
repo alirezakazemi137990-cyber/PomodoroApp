@@ -61,55 +61,34 @@ jobs:
       env:
         ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
       run: |
-        set -e  # توقف فوری در صورت بروز خطا
-        
-        # 1. آماده‌سازی کلید
+        set -e
         echo "$ANDROID_KEYSTORE_B64" | base64 --decode > keystore.jks
         MY_PASS="123456"
         
-        # 2. پیدا کردن Alias به صورت خودکار
         echo "--- Detecting Alias ---"
         DETECTED_ALIAS=$(keytool -list -v -keystore keystore.jks -storepass "$MY_PASS" | grep "Alias name:" | head -n 1 | sed 's/Alias name: //g' | xargs)
         echo "Found Alias: $DETECTED_ALIAS"
 
-        # 3. ساخت APK در حالت پایدار (Debug)
-        # نکته: چون حالت Release کرش می‌کرد، از حالت Debug که سالم است استفاده می‌کنیم
         rm -rf .buildozer
         yes | buildozer -v android debug
 
-        # 4. پیدا کردن ابزارهای امضا (Zipalign و Apksigner)
         echo "--- Locating Signing Tools ---"
         SDK_ROOT=~/.buildozer/android/platform/android-sdk
         ZIPALIGN=$(find $SDK_ROOT -name zipalign | sort -r | head -n 1)
         APKSIGNER=$(find $SDK_ROOT -name apksigner | sort -r | head -n 1)
         
-        if [ -z "$ZIPALIGN" ] || [ -z "$APKSIGNER" ]; then
-            echo "Error: Could not find zipalign or apksigner!"
-            exit 1
-        fi
-        echo "Tools found."
-
-        # 5. پردازش و امضای نهایی APK
         INPUT_APK=$(find bin -name "*-debug.apk" | head -n 1)
-        if [ -z "$INPUT_APK" ]; then
-            echo "Error: APK build failed (no file found)."
-            exit 1
-        fi
         
-        echo "Processing APK: $INPUT_APK"
-        
-        # مرحله الف: بهینه‌سازی فایل (Align)
         $ZIPALIGN -v -p 4 "$INPUT_APK" release-aligned.apk
-        
-        # مرحله ب: امضا با کلید اصلی (Sign)
         $APKSIGNER sign --ks keystore.jks --ks-pass pass:"$MY_PASS" --ks-key-alias "$DETECTED_ALIAS" --out release-signed.apk release-aligned.apk
-        
-        # تایید نهایی
         $APKSIGNER verify release-signed.apk
         
-        echo "SUCCESS! Signed APK is ready."
-        
-        # انتقال فایل نهایی به پوشه bin برای دانلود
+        # تغییر نام نهایی
         mv release-signed.apk bin/Pomodoro-Final-Signed.apk
 
-
+    # --- قسمت جدید که باید اضافه شود ---
+    - name: Upload Final Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Signed-APK
+        path: bin/Pomodoro-Final-Signed.apk
