@@ -60,57 +60,56 @@ jobs:
       env:
         ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
       run: |
-        set +o pipefail
-
-        # 1. بازیابی فایل کلید از سکرت گیت‌هاب
-        echo "$ANDROID_KEYSTORE_B64" | base64 --decode > ${GITHUB_WORKSPACE}/keystore.jks
+        # 1. دیکود کردن کلید در پوشه فعلی (مسیر ساده)
+        echo "$ANDROID_KEYSTORE_B64" | base64 --decode > keystore.jks
         
-        # رمز عبور شما (ثابت)
+        # 2. پیدا کردن هوشمند Alias
         MY_PASS="123456"
-
-        # 2. تشخیص هوشمند نام مستعار (Alias) توسط سیستم
-        echo "--- Detecting Alias from Keystore ---"
-        # تلاش برای خواندن کلید و پیدا کردن نام Alias
-        DETECTED_ALIAS=$(keytool -list -v -keystore ${GITHUB_WORKSPACE}/keystore.jks -storepass "$MY_PASS" | grep "Alias name:" | head -n 1 | sed 's/Alias name: //g' | xargs)
+        echo "--- Detecting Alias ---"
+        DETECTED_ALIAS=$(keytool -list -v -keystore keystore.jks -storepass "$MY_PASS" | grep "Alias name:" | head -n 1 | sed 's/Alias name: //g' | xargs)
         
         if [ -z "$DETECTED_ALIAS" ]; then
-          echo "FATAL ERROR: Could not find any Alias. Check password or keystore file."
+          echo "FATAL ERROR: Could not find Alias. Check Keystore secret."
           exit 1
         fi
-        
-        echo "SUCCESS: Found Alias: '$DETECTED_ALIAS'"
+        echo "Found Alias: $DETECTED_ALIAS"
 
-        # 3. تزریق تنظیمات به buildozer.spec با پایتون
+        # 3. تزریق تنظیمات به فایل buildozer.spec با پایتون
         cat <<EOF > update_spec.py
         import os
+        
+        # تنظیمات جدید (مسیر نسبی و ساده)
+        new_config = [
+            f"keystore.filename = ./keystore.jks\n",
+            f"keystore.alias = {DETECTED_ALIAS}\n",
+            f"keystore.password = {MY_PASS}\n",
+            f"keystore.alias_password = {MY_PASS}\n"
+        ]
 
-        workspace = os.environ.get('GITHUB_WORKSPACE')
-        alias = "$DETECTED_ALIAS"
-        password = "$MY_PASS"
-
-        # خواندن فایل
+        # خواندن و بازنویسی فایل
         with open("buildozer.spec", "r") as f:
             lines = f.readlines()
 
-        # نوشتن فایل جدید (حذف قدیمی‌ها و تزریق جدید)
         with open("buildozer.spec", "w") as f:
             for line in lines:
-                if any(x in line for x in ["keystore.filename", "keystore.alias", "keystore.password", "keystore.alias_password"]):
+                # حذف هرگونه تنظیمات قدیمی مربوط به keystore
+                if any(k in line for k in ["keystore.filename", "keystore.alias", "keystore.password", "keystore.alias_password"]):
                     continue
                 
                 f.write(line)
                 
+                # تزریق تنظیمات جدید بلافاصله بعد از تگ [app]
                 if line.strip() == "[app]":
-                    f.write(f"keystore.filename = {workspace}/keystore.jks\n")
-                    f.write(f"keystore.alias = {alias}\n")
-                    f.write(f"keystore.password = {password}\n")
-                    f.write(f"keystore.alias_password = {password}\n")
+                    for cfg in new_config:
+                        f.write(cfg)
         EOF
-
-        python3 update_spec.py
         
-        # 4. پاکسازی و شروع بیلد
-        unset ANDROID_NDK_HOME ANDROID_NDK_ROOT ANDROID_NDK ANDROID_SDK_ROOT ANDROID_HOME
+        # اجرای اسکریپت ویرایشگر
+        python3 update_spec.py
+
+        # 4. شروع بیلد (بدون yes برای دیدن ارور واقعی)
+        # پاکسازی بیلد قبلی برای جلوگیری از کش معیوب
         rm -rf .buildozer
-        yes | buildozer -v android release
+        
+        buildozer -v android release
 
