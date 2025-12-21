@@ -20,7 +20,8 @@ from plyer import notification, vibrator
 from kivymd.uix.label import MDLabel
 from kivymd.uix.card import MDCard
 from kivymd.uix.textfield import MDTextField
-
+from kivy.core.audio import SoundLoader
+from kivymd.uix.menu import MDDropdownMenu
 # --- وارد کردن کتابخانه‌های صدا ---
 try:
     import winsound
@@ -80,11 +81,21 @@ KV = '''
                 valign: "center"
                 italic: True
 
-        # --- Task Input ---
-        MDTextField:
-            id: task_input
-            hint_text: "Task Name"
-            mode: "rectangle"
+        # --- Task Input & Smart Tags ---
+        MDBoxLayout:
+            adaptive_height: True
+            spacing: dp(10)
+
+            MDTextField:
+                id: task_input
+                hint_text: "Task Name"
+                mode: "rectangle"
+                size_hint_x: 0.8
+
+            MDIconButton:
+                icon: "tag-outline"
+                on_release: root.open_tag_menu()
+                pos_hint: {"center_y": .5}
 
         # --- Timer Display ---
         MDLabel:
@@ -129,6 +140,11 @@ KV = '''
                 size_hint_x: 0.5
                 on_release: root.toggle_timer()
                 md_bg_color: app.theme_cls.primary_color if not root.timer_running else (1, 0.6, 0, 1)
+
+            MDIconButton:
+                id: btn_sound
+                icon: "music-note-off"
+                on_release: root.toggle_sound()
 
             MDIconButton:
                 icon: "skip-next"
@@ -443,6 +459,21 @@ class PomodoroConfig:
         self.user_name = self.config['USER'].get('name', 'User')
         self.user_title = self.config['USER'].get('title', 'Dreamer')
 
+    def get_random_quote(self):
+        quotes = [
+            "Focus is the new IQ. (Cal Newport)",
+            "Where your attention goes, your life follows.",
+            "Multitasking is a lie. Focus on one thing.",
+            "Deep Work: Professional activities performed in a state of distraction-free concentration.",
+            "Your brain is like a muscle. Train it.",
+            "Flow state is the optimal experience.",
+            "Discipline equals Freedom. (Jocko Willink)",
+            "Amateurs sit and wait for inspiration, the rest of us just get up and go to work.",
+            "Small habits make a big difference.",
+            "Rest is part of the work."
+        ]
+        return random.choice(quotes)
+    
     def log_session(self, session_type, duration_minutes, task_name="General"):
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         file_exists = os.path.isfile(self.history_file)
@@ -572,6 +603,9 @@ class HomeScreen(MDScreen):
     progress_value = NumericProperty(0)
     timer_running = BooleanProperty(False)
     is_work_time = BooleanProperty(True)
+    menu = None
+    current_sound = None
+    is_sound_playing = False
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -621,7 +655,53 @@ class HomeScreen(MDScreen):
             self.ids.task_input.disabled = False
         except Exception:
             pass
+    def open_tag_menu(self):
+        if not self.menu:
+            tags = ["Study 📚", "Coding 💻", "Deep Work 🧠", "Reading 📖", "Language 🗣"]
+            menu_items = [
+                {
+                    "text": tag,
+                    "viewclass": "OneLineListItem",
+                    "on_release": lambda x=tag: self.set_tag(x),
+                } for tag in tags
+            ]
+            self.menu = MDDropdownMenu(
+                caller=self.ids.task_input,
+                items=menu_items,
+                width_mult=4,
+            )
+        self.menu.open()
 
+    def set_tag(self, tag_text):
+        self.ids.task_input.text = tag_text
+        self.menu.dismiss()
+        
+    def toggle_sound(self):
+        if self.is_sound_playing:
+            # توقف صدا
+            if self.current_sound:
+                self.current_sound.stop()
+            self.ids.btn_sound.icon = "music-note-off"
+            self.ids.btn_sound.md_bg_color = (0, 0, 0, 0)
+            self.is_sound_playing = False
+        else:
+            # پخش صدا (باران)
+            sound_path = "assets/sounds/rain.mp3"
+            
+            if os.path.exists(sound_path):
+                # اگر قبلاً لود نشده، لودش کن
+                if not self.current_sound:
+                    self.current_sound = SoundLoader.load(sound_path)
+                
+                if self.current_sound:
+                    self.current_sound.loop = True
+                    self.current_sound.play()
+                    self.ids.btn_sound.icon = "music-note"
+                    self.ids.btn_sound.md_bg_color = (0.2, 0.6, 1, 0.2) # هایلایت آبی
+                    self.is_sound_playing = True
+            else:
+                print(f"Sound file missing: {sound_path}")
+                
     def reset_timer(self):
         # ۱) فوری تایمر را غیرفعال کن تا تیک‌های معلق در update_clock سریع بازگردند
         self.timer_running = False
@@ -1006,6 +1086,7 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
+
 
 
 
