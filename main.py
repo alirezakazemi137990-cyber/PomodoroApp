@@ -614,12 +614,15 @@ class HomeScreen(MDScreen):
         super().__init__(**kwargs)
         self.timer_event = None
         self.clock_event = None
-        self.time_left = 1500  # تغییر نام به time_left برای هماهنگی با کل برنامه
+        self.time_left = 1500
         self.total_time_session = 1500
-        self.cycles_completed = 0 # اصلاح نام برای شمارش درست
+        self.cycles_completed = 0
         self.sound = None
         self.current_sound = None
         self.end_time = None
+        
+        # --- سیستم کش صدا (برای جلوگیری از هنگ کردن) ---
+        self.sound_cache = {}  # این خط جدید و حیاتی است
         
         # --- لیست صداها ---
         self.sound_file_map = {
@@ -687,26 +690,41 @@ class HomeScreen(MDScreen):
         if self.current_sound_name == "OFF":
             return
 
-        sound_path = self.sound_file_map.get(self.current_sound_name)
-        if sound_path and os.path.exists(sound_path):
+        # اگر صدا قبلاً لود شده، از توی کش بردار (بدون لگ)
+        if self.current_sound_name in self.sound_cache:
+            self.current_sound = self.sound_cache[self.current_sound_name]
+        else:
+            # اگر بار اوله، لود کن و بذار توی کش
+            sound_path = self.sound_file_map.get(self.current_sound_name)
+            if sound_path and os.path.exists(sound_path):
+                try:
+                    loaded_sound = SoundLoader.load(sound_path)
+                    if loaded_sound:
+                        self.sound_cache[self.current_sound_name] = loaded_sound
+                        self.current_sound = loaded_sound
+                except Exception as e:
+                    print(f"Sound Load Error: {e}")
+                    return
+
+        # پخش صدا
+        if self.current_sound:
             try:
-                # اگر صدای قبلی مانده، پاکش کن
-                if self.current_sound: 
-                    self.current_sound.stop()
-                
-                self.current_sound = SoundLoader.load(sound_path)
-                if self.current_sound:
+                # اگر صدا در حال پخش نیست، پخش کن
+                if self.current_sound.state != 'play':
                     self.current_sound.loop = True
                     self.current_sound.play()
                     self.is_playing_sound = True
             except Exception as e:
-                print(f"Sound Error: {e}")
+                print(f"Play Error: {e}")
 
     def stop_sound(self):
         if self.current_sound:
-            self.current_sound.stop()
-            self.current_sound.unload() # آزاد کردن حافظه
-            self.current_sound = None
+            try:
+                self.current_sound.stop()
+                # نکته: اینجا unload() را حذف کردیم تا فایل در حافظه بماند
+            except Exception:
+                pass
+        self.current_sound = None # فقط رفرنس رو قطع می‌کنیم، فایل توی self.sound_cache هست
         self.is_playing_sound = False
 
     def reset_state(self):
@@ -1163,6 +1181,7 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
+
 
 
 
