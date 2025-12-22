@@ -613,7 +613,8 @@ class HomeScreen(MDScreen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # ... (کدهای قبلی مثل timer_event و time_left بمانند) ...
+        self.timer_event = None
+        self.clock_event = None
         self.time_left = 1500
         self.total_time_session = 1500
         self.cycles_completed = 0
@@ -621,7 +622,7 @@ class HomeScreen(MDScreen):
         self.current_sound = None
         self.end_time = None
         
-        # --- تغییر ۱: تعریف مپ و شروع لود در پس‌زمینه ---
+        # --- سیستم کش صدا و ترد پس‌زمینه ---
         self.sound_cache = {} 
         self.sound_file_map = {
             "Rain": "assets/sounds/rain.mp3",
@@ -630,10 +631,21 @@ class HomeScreen(MDScreen):
         }
         self.current_sound_name = "Rain"
 
-        # >>> این خط حیاتی است: شروع بارگذاری بی سروصدا <<<
+        # شروع بارگذاری بی سروصدا در پس‌زمینه
         threading.Thread(target=self.preload_sounds_background, daemon=True).start()
 
-        # ... (بقیه کدهای init مثل quotes و saved_tasks بمانند) ...
+        # --- این بخش‌ها پاک شده بودند که باعث کرش شد ---
+        self.quotes = [
+            "Dopamine is waiting at the finish line.",
+            "Deep work rewires your brain.",
+            "Focus is a muscle. Train it.",
+            "Multitasking drops IQ by 10 points.",
+            "Flow state unlocks 500% productivity."
+        ]
+        
+        self.saved_tasks = ["Study", "Coding", "Deep Work", "Reading", "Language", "Writing"]
+        self.menu = None
+        self.sound_menu = None
 
     def on_enter(self):
         app = MDApp.get_running_app()
@@ -1181,6 +1193,7 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
+
 
 
 
