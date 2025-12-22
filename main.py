@@ -22,6 +22,7 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.card import MDCard
 from kivymd.uix.textfield import MDTextField
 from kivy.core.audio import SoundLoader
+from kivy.clock import Clock
 from kivymd.uix.menu import MDDropdownMenu
 # --- وارد کردن کتابخانه‌های صدا ---
 try:
@@ -613,8 +614,7 @@ class HomeScreen(MDScreen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.timer_event = None
-        self.clock_event = None
+        # ... (متغیرهای قبلی سر جای خودشان) ...
         self.time_left = 1500
         self.total_time_session = 1500
         self.cycles_completed = 0
@@ -622,7 +622,6 @@ class HomeScreen(MDScreen):
         self.current_sound = None
         self.end_time = None
         
-        # --- سیستم کش صدا و ترد پس‌زمینه ---
         self.sound_cache = {} 
         self.sound_file_map = {
             "Rain": "assets/sounds/rain.mp3",
@@ -631,22 +630,11 @@ class HomeScreen(MDScreen):
         }
         self.current_sound_name = "Rain"
 
-        # شروع بارگذاری بی سروصدا در پس‌زمینه
-        threading.Thread(target=self.preload_sounds_background, daemon=True).start()
+        # --- تغییر مهم اینجاست ---
+        # به جای شروع فوری ترد، ۱ ثانیه تاخیر می‌اندازیم تا UI کامل بالا بیاید
+        Clock.schedule_once(self.start_background_loading, 1) 
 
-        # --- این بخش‌ها پاک شده بودند که باعث کرش شد ---
-        self.quotes = [
-            "Dopamine is waiting at the finish line.",
-            "Deep work rewires your brain.",
-            "Focus is a muscle. Train it.",
-            "Multitasking drops IQ by 10 points.",
-            "Flow state unlocks 500% productivity."
-        ]
-        
-        self.saved_tasks = ["Study", "Coding", "Deep Work", "Reading", "Language", "Writing"]
-        self.menu = None
-        self.sound_menu = None
-
+        # ... (بقیه کدهای init) ...
     def on_enter(self):
         app = MDApp.get_running_app()
         self.greeting_text = f"Hi, {app.config_engine.user_name}"
@@ -675,6 +663,9 @@ class HomeScreen(MDScreen):
             items=sound_items,
             width_mult=2,
         )
+    def start_background_loading(self, dt):
+        """این تابع ۱ ثانیه بعد از لود شدن برنامه اجرا می‌شود"""
+        threading.Thread(target=self.preload_sounds_background, daemon=True).start()
         
     def preload_sounds_background(self):
         """این تابع فایل‌ها را یواشکی در رم بارگذاری می‌کند"""
@@ -1193,6 +1184,7 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
+
 
 
 
