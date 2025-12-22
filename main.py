@@ -614,14 +614,19 @@ class HomeScreen(MDScreen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # ... (متغیرهای قبلی سر جای خودشان) ...
-        self.time_left = 1500
-        self.total_time_session = 1500
+        # 1. متغیرهای تایمر
+        self.timer_running = False
+        self.is_work_time = True
         self.cycles_completed = 0
+        self.timer_event = None
+        self.time_left = 1500  # پیش‌فرض 25 دقیقه
+        self.total_time_session = 1500
+        self.end_time = None
+
+        # 2. متغیرهای صدا
         self.sound = None
         self.current_sound = None
-        self.end_time = None
-        
+        self.is_playing_sound = False
         self.sound_cache = {} 
         self.sound_file_map = {
             "Rain": "assets/sounds/rain.mp3",
@@ -630,11 +635,21 @@ class HomeScreen(MDScreen):
         }
         self.current_sound_name = "Rain"
 
-        # --- تغییر مهم اینجاست ---
-        # به جای شروع فوری ترد، ۱ ثانیه تاخیر می‌اندازیم تا UI کامل بالا بیاید
-        Clock.schedule_once(self.start_background_loading, 1) 
+        # 3. متغیرهای محتوا (این بخش پاک شده بود!)
+        self.quotes = [
+            "Focus on being productive instead of busy.",
+            "The only way to do great work is to love what you do.",
+            "It always seems impossible until it's done.",
+            "Don't watch the clock; do what it does. Keep going.",
+            "Success is the sum of small efforts, repeated day in and day out."
+        ]
+        
+        self.saved_tasks = []
 
-        # ... (بقیه کدهای init) ...
+        # 4. شروع لود صدا با تاخیر (برای حل مشکل صفحه سیاه)
+        # این تابع 1 ثانیه بعد از اینکه صفحه بالا اومد اجرا میشه
+        Clock.schedule_once(self.start_background_loading, 1)
+
     def on_enter(self):
         app = MDApp.get_running_app()
         self.greeting_text = f"Hi, {app.config_engine.user_name}"
@@ -1184,6 +1199,7 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
+
 
 
 
