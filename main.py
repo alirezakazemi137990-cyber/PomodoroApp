@@ -634,8 +634,6 @@ class HomeScreen(MDScreen):
             "Clock": "assets/sounds/clock.mp3"
         }
         self.current_sound_name = "Rain"
-
-        # 3. متغیرهای محتوا (این بخش پاک شده بود!)
         self.quotes = [
             "Focus on being productive instead of busy.",
             "The only way to do great work is to love what you do.",
@@ -643,7 +641,7 @@ class HomeScreen(MDScreen):
             "Don't watch the clock; do what it does. Keep going.",
             "Success is the sum of small efforts, repeated day in and day out."
         ]
-        
+
         self.saved_tasks = []
 
         # 4. شروع لود صدا با تاخیر (برای حل مشکل صفحه سیاه)
@@ -1199,6 +1197,7 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
+
 
 
 
