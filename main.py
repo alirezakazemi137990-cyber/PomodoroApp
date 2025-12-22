@@ -646,7 +646,7 @@ class HomeScreen(MDScreen):
         self.user_title_text = app.config_engine.user_title
         self.remaining_seconds = app.config_engine.work_min * 60
         self.total_seconds = self.remaining_seconds
-        self.update_timer_display()
+        self.update_display_time()
         self.quote_text = random.choice(self.quotes)
         self.cycle_text = f"Cycle: {self.cycles}/{app.config_engine.cycles_limit}"
         
@@ -1178,6 +1178,7 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
+
 
 
 
