@@ -2,6 +2,7 @@ import os
 import csv
 import configparser
 import random
+import threading
 from datetime import datetime, timedelta
 from kivy.lang import Builder
 from kivy.clock import Clock
@@ -612,8 +613,7 @@ class HomeScreen(MDScreen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.timer_event = None
-        self.clock_event = None
+        # ... (کدهای قبلی مثل timer_event و time_left بمانند) ...
         self.time_left = 1500
         self.total_time_session = 1500
         self.cycles_completed = 0
@@ -621,10 +621,8 @@ class HomeScreen(MDScreen):
         self.current_sound = None
         self.end_time = None
         
-        # --- سیستم کش صدا (برای جلوگیری از هنگ کردن) ---
-        self.sound_cache = {}  # این خط جدید و حیاتی است
-        
-        # --- لیست صداها ---
+        # --- تغییر ۱: تعریف مپ و شروع لود در پس‌زمینه ---
+        self.sound_cache = {} 
         self.sound_file_map = {
             "Rain": "assets/sounds/rain.mp3",
             "Forest": "assets/sounds/forest.mp3",
@@ -632,18 +630,10 @@ class HomeScreen(MDScreen):
         }
         self.current_sound_name = "Rain"
 
-        # جملات علمی/انگیزشی
-        self.quotes = [
-            "Dopamine is waiting at the finish line.",
-            "Deep work rewires your brain.",
-            "Focus is a muscle. Train it.",
-            "Multitasking drops IQ by 10 points.",
-            "Flow state unlocks 500% productivity."
-        ]
-        
-        self.saved_tasks = ["Study", "Coding", "Deep Work", "Reading", "Language", "Writing"]
-        self.menu = None
-        self.sound_menu = None
+        # >>> این خط حیاتی است: شروع بارگذاری بی سروصدا <<<
+        threading.Thread(target=self.preload_sounds_background, daemon=True).start()
+
+        # ... (بقیه کدهای init مثل quotes و saved_tasks بمانند) ...
 
     def on_enter(self):
         app = MDApp.get_running_app()
@@ -674,6 +664,18 @@ class HomeScreen(MDScreen):
             width_mult=2,
         )
         
+    def preload_sounds_background(self):
+        """این تابع فایل‌ها را یواشکی در رم بارگذاری می‌کند"""
+        for name, path in self.sound_file_map.items():
+            if os.path.exists(path):
+                try:
+                    sound = SoundLoader.load(path)
+                    if sound:
+                        self.sound_cache[name] = sound
+                        sound.seek(0) # ترفند برای پر کردن بافر اندروید
+                except Exception as e:
+                    print(f"Error preloading {name}: {e}")
+        
     def open_sound_menu(self):
         self.sound_menu.open()
 
@@ -686,30 +688,28 @@ class HomeScreen(MDScreen):
             if sound_name != "OFF":
                 self.play_sound()
                 
+    # --- تغییر ۳: پخش هوشمند (بدون لگ) ---
     def play_sound(self):
         if self.current_sound_name == "OFF":
             return
 
-        # اگر صدا قبلاً لود شده، از توی کش بردار (بدون لگ)
-        if self.current_sound_name in self.sound_cache:
-            self.current_sound = self.sound_cache[self.current_sound_name]
-        else:
-            # اگر بار اوله، لود کن و بذار توی کش
-            sound_path = self.sound_file_map.get(self.current_sound_name)
-            if sound_path and os.path.exists(sound_path):
-                try:
-                    loaded_sound = SoundLoader.load(sound_path)
-                    if loaded_sound:
-                        self.sound_cache[self.current_sound_name] = loaded_sound
-                        self.current_sound = loaded_sound
-                except Exception as e:
-                    print(f"Sound Load Error: {e}")
-                    return
+        # اول چک میکنیم تو کش هست یا نه
+        sound_to_play = self.sound_cache.get(self.current_sound_name)
 
-        # پخش صدا
-        if self.current_sound:
+        # اگر نبود (هنوز لود نشده)، همین لحظه لود کن (فال‌بک)
+        if not sound_to_play:
+            path = self.sound_file_map.get(self.current_sound_name)
+            if path:
+                try:
+                    sound_to_play = SoundLoader.load(path)
+                    self.sound_cache[self.current_sound_name] = sound_to_play
+                except:
+                    pass
+
+        # پخش نهایی
+        if sound_to_play:
+            self.current_sound = sound_to_play
             try:
-                # اگر صدا در حال پخش نیست، پخش کن
                 if self.current_sound.state != 'play':
                     self.current_sound.loop = True
                     self.current_sound.play()
@@ -1181,6 +1181,7 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
+
 
 
 
