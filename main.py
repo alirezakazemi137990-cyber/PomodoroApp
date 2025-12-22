@@ -143,8 +143,10 @@ KV = '''
 
             MDIconButton:
                 id: btn_sound
-                icon: "music-note-off"
-                on_release: root.toggle_sound()
+                icon: "music-note" if not root.is_playing_sound else "music-note-off"
+                theme_text_color: "Custom"
+                text_color: app.theme_cls.primary_color
+                on_release: root.open_sound_menu()
 
             MDIconButton:
                 icon: "skip-next"
@@ -606,24 +608,98 @@ class HomeScreen(MDScreen):
     menu = None
     current_sound = None
     is_sound_playing = False
+    is_playing_sound = BooleanProperty(False)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.clock_event = None
-        self.end_time = None   # <-- اضافه کن این خط
-        self.app = MDApp.get_running_app()
-        self.cfg = self.app.config_engine
-        self.reset_state()
+        self.timer_event = None
+        self.remaining_seconds = 1500
+        self.total_seconds = 1500
+        self.cycles = 0
+        self.sound = None
+        
+        # --- لیست صداها ---
+        self.sound_file_map = {
+            "Rain": "assets/sounds/rain.mp3",
+            "Forest": "assets/sounds/forest.mp3",
+            "Clock": "assets/sounds/clock.mp3"
+        }
+        self.current_sound_name = "Rain"
+
+        # جملات علمی/انگیزشی
+        self.quotes = [
+            "Dopamine is waiting at the finish line.",
+            "Deep work rewires your brain.",
+            "Focus is a muscle. Train it.",
+            "Multitasking drops IQ by 10 points.",
+            "Flow state unlocks 500% productivity."
+        ]
+        
+        # --- حذف اموجی‌ها برای رفع باگ گرافیکی ---
+        self.saved_tasks = ["Study", "Coding", "Deep Work", "Reading", "Language", "Writing"]
+        self.menu = None
+        self.sound_menu = None
 
     def on_enter(self):
-        self.greeting_text = f"Hi, {self.cfg.user_name}"
-        self.user_title_text = self.cfg.user_title
+        app = MDApp.get_running_app()
+        self.greeting_text = f"Hi, {app.config_engine.user_name}"
+        self.user_title_text = app.config_engine.user_title
+        self.remaining_seconds = app.config_engine.work_min * 60
+        self.total_seconds = self.remaining_seconds
+        self.update_timer_display()
+        self.quote_text = random.choice(self.quotes)
+        self.cycle_text = f"Cycle: {self.cycles}/{app.config_engine.cycles_limit}"
         
-        # انتخاب یک جمله تصادفی هنگام ورود به صفحه
-        self.quote_text = random.choice(self.cfg.quotes)
+        # --- ساخت منوی انتخاب صدا ---
+        sound_items = [
+            {"viewclass": "OneLineListItem", "text": "Rain", "on_release": lambda x="Rain": self.set_sound(x)},
+            {"viewclass": "OneLineListItem", "text": "Forest", "on_release": lambda x="Forest": self.set_sound(x)},
+            {"viewclass": "OneLineListItem", "text": "Clock", "on_release": lambda x="Clock": self.set_sound(x)},
+            {"viewclass": "OneLineListItem", "text": "OFF", "on_release": lambda x="OFF": self.set_sound(x)},
+        ]
+        self.sound_menu = MDDropdownMenu(
+            caller=self.ids.btn_sound,
+            items=sound_items,
+            width_mult=2,
+        )
+        
+    def open_sound_menu(self):
+        self.sound_menu.open()
 
-        current = self.cycles_completed + 1 if self.cycles_completed < self.cfg.cycles_limit else self.cfg.cycles_limit
-        self.cycle_text = f"Cycle: {current}/{self.cfg.cycles_limit}"
+    def set_sound(self, sound_name):
+        self.sound_menu.dismiss()
+        self.current_sound_name = sound_name
+        # اگر موزیک روشن است، آن را ریست کن تا صدای جدید پخش شود
+        if self.is_playing_sound:
+            self.stop_sound()
+            if sound_name != "OFF":
+                self.play_sound()
+                
+    def play_sound(self):
+        if self.current_sound_name == "OFF":
+            return
+
+        sound_path = self.sound_file_map.get(self.current_sound_name)
+        if sound_path and os.path.exists(sound_path):
+            try:
+                # اگر صدای قبلی مانده، پاکش کن
+                if self.current_sound: 
+                    self.current_sound.stop()
+                
+                self.current_sound = SoundLoader.load(sound_path)
+                if self.current_sound:
+                    self.current_sound.loop = True
+                    self.current_sound.play()
+                    self.is_playing_sound = True
+            except Exception as e:
+                print(f"Sound Error: {e}")
+
+    def stop_sound(self):
+        if self.current_sound:
+            self.current_sound.stop()
+            self.current_sound.unload() # آزاد کردن حافظه
+            self.current_sound = None
+        self.is_playing_sound = False
 
     def reset_state(self):
         self.timer_running = False
@@ -656,20 +732,19 @@ class HomeScreen(MDScreen):
         except Exception:
             pass
     def open_tag_menu(self):
-        if not self.menu:
-            tags = ["Study 📚", "Coding 💻", "Deep Work 🧠", "Reading 📖", "Language 🗣"]
-            menu_items = [
-                {
-                    "text": tag,
-                    "viewclass": "OneLineListItem",
-                    "on_release": lambda x=tag: self.set_tag(x),
-                } for tag in tags
-            ]
-            self.menu = MDDropdownMenu(
-                caller=self.ids.task_input,
-                items=menu_items,
-                width_mult=4,
-            )
+        # استفاده از لیست saved_tasks که داینامیک است و اموجی ندارد
+        menu_items = [
+            {
+                "text": tag,
+                "viewclass": "OneLineListItem",
+                "on_release": lambda x=tag: self.set_tag(x),
+            } for tag in self.saved_tasks
+        ]
+        self.menu = MDDropdownMenu(
+            caller=self.ids.task_input,
+            items=menu_items,
+            width_mult=4,
+        )
         self.menu.open()
 
     def set_tag(self, tag_text):
@@ -701,6 +776,12 @@ class HomeScreen(MDScreen):
                     self.is_sound_playing = True
             else:
                 print(f"Sound file missing: {sound_path}")
+    def pause_timer(self):
+        self.timer_running = False
+        self.status_text = "Paused"
+        # لغو ایونت ساعت برای جلوگیری از آپدیت شدن زمان
+        if getattr(self, "clock_event", None):
+            self.clock_event.cancel()
                 
     def reset_timer(self):
         # ۱) فوری تایمر را غیرفعال کن تا تیک‌های معلق در update_clock سریع بازگردند
@@ -761,32 +842,31 @@ class HomeScreen(MDScreen):
         self.ids.task_input.error = False
 
         if not self.timer_running:
-            # شروع امن: علامت اجرای تایمر را اول ست می‌کنیم
-            self.timer_running = True
-            self.status_text = "Focusing..."
+            # --- تغییر: ذخیره تسک در لیست ---
+            if raw_task and raw_task not in self.saved_tasks:
+                self.saved_tasks.append(raw_task)
 
-            # اگر ایونتی از قبل وجود داشت، تلاش می‌کنیم لغوش کنیم (دفاعی)
+            # شروع تایمر
+            self.timer_running = True
+            self.status_text = "Focusing..." if self.is_work_time else "Recharging..."
+            
+            # پخش صدا (اگر تنظیم شده باشد)
+            if self.is_work_time:
+                self.play_sound()
+
+            # مدیریت ایونت ساعت
             if getattr(self, "clock_event", None):
-                try:
-                    self.clock_event.cancel()
-                except Exception:
-                    pass
+                try: self.clock_event.cancel()
+                except: pass
                 self.clock_event = None
 
-            # set end_time سپس ایونت ساعت را schedule کن
             self.end_time = datetime.now() + timedelta(seconds=self.time_left)
             self.clock_event = Clock.schedule_interval(self.update_clock, 0.5)
         else:
-            # متوقف کردن امن: ابتدا timer_running = False و پاک‌سازی end_time
-            self.timer_running = False
-            self.end_time = None
-            if getattr(self, "clock_event", None):
-                try:
-                    self.clock_event.cancel()
-                except Exception:
-                    pass
-                self.clock_event = None
-            self.status_text = "Paused"
+            # توقف تایمر
+            self.pause_timer()
+            # توقف صدا
+            self.stop_sound()
             
     def update_clock(self, dt):
         # اگر تایمر در حال اجرا نیست یا زمان پایان مشخص نیست، ایونت را متوقف کن
@@ -812,18 +892,30 @@ class HomeScreen(MDScreen):
             self.finish_session()
 
     def finish_early(self):
-        if not self.timer_running or not self.is_work_time:
-            return
-
-        # محاسبه زمان سپری شده
-        elapsed_seconds = self.total_time_session - self.time_left
-        elapsed_minutes = round(elapsed_seconds / 60)
-
-        # اگر کمتر از یک دقیقه گذشته، فقط جلسه را رد کن بدون اینکه لاگ ثبت شود
-        if elapsed_minutes < 1:
-            self.finish_session(is_early=True)
+        # محاسبه زمان
+        elapsed_seconds = self.total_seconds - self.remaining_seconds
+        elapsed_minutes = int(elapsed_seconds / 60) # تبدیل به int برای جلوگیری از خطا در خواندن فایل CSV
+        if elapsed_minutes < 1: elapsed_minutes = 1 # حداقل ۱ دقیقه ثبت شود
+        
+        # متوقف کردن تایمر (این تابع باید تعریف شده باشد، اگر نداری کد pause_timer پایین را هم اضافه کن)
+        self.pause_timer() 
+        self.stop_sound() # قطع صدا
+        
+        app = MDApp.get_running_app()
+        task_name = self.ids.task_input.text or "General"
+        
+        # ثبت در آمار
+        if self.is_work_time:
+            app.config_engine.log_session("Work (Skipped)", elapsed_minutes, task_name)
+        
+        self.status_text = "Session Skipped"
+        
+        # پرش به مرحله بعد
+        if self.is_work_time:
+             self.start_break()
         else:
-            self.finish_session(manual_duration=elapsed_minutes, is_early=True)
+             self.is_work_time = True
+             self.reset_timer()
 
     def finish_session(self, manual_duration=None, is_early=False):
         # ۱. تایمر و ایونت‌ها را به طور کامل متوقف کن
@@ -1086,6 +1178,7 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
+
 
 
 
