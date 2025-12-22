@@ -25,7 +25,7 @@ source.exclude_dirs = tests, bin, venv, __pycache__
 version = 1.1
 
 # (list) Application requirements
-requirements = python3,kivy==2.2.1,kivymd==1.1.1,pillow,plyer,pyjnius,cython==0.29.36
+requirements = python3,kivy==2.2.1,kivymd==1.1.1,pillow,plyer,pyjnius,cython==0.29.36,ffpyplayer,ffpyplayer_codecs
 
 
 # (str) Custom source folders for requirements
@@ -448,6 +448,7 @@ android.release.keystore = my-key.keystore
 android.release.keyalias = my-alias
 android.release.keystore_password = 123456
 android.release.keyalias_password = 123456
+
 
 
 
