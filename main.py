@@ -659,8 +659,17 @@ class HomeScreen(MDScreen):
         self.total_time_session = self.time_left
         
         self.update_display_time()
+        if not hasattr(self, 'quotes'):
+            self.quotes = [
+                "Focus on being productive instead of busy.",
+                "The only way to do great work is to love what you do.",
+                "It always seems impossible until it's done.",
+                "Don't watch the clock; do what it does. Keep going.",
+                "Success is the sum of small efforts, repeated day in and day out."
+            ]
         if not self.quote_text:
             self.quote_text = random.choice(self.quotes)
+
             
         self.cycle_text = f"Cycle: {self.cycles_completed}/{app.config_engine.cycles_limit}"
         
@@ -988,6 +997,14 @@ class HomeScreen(MDScreen):
         else: 
             self.is_work_time = True
             self.status_text = "Back to Work! 🚀"
+            if not hasattr(self, 'quotes'):
+                self.quotes = [
+                    "Focus on being productive instead of busy.",
+                    "The only way to do great work is to love what you do.",
+                    "It always seems impossible until it's done.",
+                    "Don't watch the clock; do what it does. Keep going.",
+                    "Success is the sum of small efforts, repeated day in and day out."
+                ]
             self.quote_text = random.choice(self.quotes)
             self.time_left = int(app.config_engine.work_min) * 60
             
@@ -1197,6 +1214,7 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
+
 
 
 
