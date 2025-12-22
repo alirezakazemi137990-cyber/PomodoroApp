@@ -613,10 +613,13 @@ class HomeScreen(MDScreen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.timer_event = None
-        self.remaining_seconds = 1500
-        self.total_seconds = 1500
-        self.cycles = 0
+        self.clock_event = None
+        self.time_left = 1500  # تغییر نام به time_left برای هماهنگی با کل برنامه
+        self.total_time_session = 1500
+        self.cycles_completed = 0 # اصلاح نام برای شمارش درست
         self.sound = None
+        self.current_sound = None
+        self.end_time = None
         
         # --- لیست صداها ---
         self.sound_file_map = {
@@ -635,7 +638,6 @@ class HomeScreen(MDScreen):
             "Flow state unlocks 500% productivity."
         ]
         
-        # --- حذف اموجی‌ها برای رفع باگ گرافیکی ---
         self.saved_tasks = ["Study", "Coding", "Deep Work", "Reading", "Language", "Writing"]
         self.menu = None
         self.sound_menu = None
@@ -644,11 +646,17 @@ class HomeScreen(MDScreen):
         app = MDApp.get_running_app()
         self.greeting_text = f"Hi, {app.config_engine.user_name}"
         self.user_title_text = app.config_engine.user_title
-        self.remaining_seconds = app.config_engine.work_min * 60
-        self.total_seconds = self.remaining_seconds
+        
+        # استفاده از متغیر صحیح time_left
+        start_min = app.config_engine.work_min if self.is_work_time else app.config_engine.short_break_min
+        self.time_left = start_min * 60
+        self.total_time_session = self.time_left
+        
         self.update_display_time()
-        self.quote_text = random.choice(self.quotes)
-        self.cycle_text = f"Cycle: {self.cycles}/{app.config_engine.cycles_limit}"
+        if not self.quote_text:
+            self.quote_text = random.choice(self.quotes)
+            
+        self.cycle_text = f"Cycle: {self.cycles_completed}/{app.config_engine.cycles_limit}"
         
         # --- ساخت منوی انتخاب صدا ---
         sound_items = [
@@ -702,35 +710,34 @@ class HomeScreen(MDScreen):
         self.is_playing_sound = False
 
     def reset_state(self):
+        app = MDApp.get_running_app() # گرفتن دسترسی به app
+        
         self.timer_running = False
         self.is_work_time = True
         self.cycles_completed = 0
 
-        # مقداردهی زمان‌ها (اطمینان از int)
-        self.time_left = int(self.cfg.work_min) * 60
+        # استفاده از app.config_engine به جای self.cfg
+        self.time_left = int(app.config_engine.work_min) * 60
         self.total_time_session = self.time_left
 
         self.update_display_time()
         self.progress_value = 0
         self.status_text = "Ready to Focus?"
-        self.cycle_text = f"Cycle: 1/{self.cfg.cycles_limit}"
+        self.cycle_text = f"Cycle: 1/{app.config_engine.cycles_limit}"
 
-        # لغو ایونت ساعت اگر وجود دارد و پاک‌سازی مرجع‌ها
         if getattr(self, "clock_event", None):
-            try:
-                self.clock_event.cancel()
-            except Exception:
-                pass
+            try: self.clock_event.cancel()
+            except: pass
         self.clock_event = None
         self.end_time = None
 
-        # دسترسی ایمن به widget‌های ids (ممکن است صفحه آماده نباشد)
         try:
             self.ids.task_input.text = ""
             self.ids.task_input.error = False
             self.ids.task_input.disabled = False
         except Exception:
             pass
+
     def open_tag_menu(self):
         # استفاده از لیست saved_tasks که داینامیک است و اموجی ندارد
         menu_items = [
@@ -784,39 +791,33 @@ class HomeScreen(MDScreen):
             self.clock_event.cancel()
                 
     def reset_timer(self):
-        # ۱) فوری تایمر را غیرفعال کن تا تیک‌های معلق در update_clock سریع بازگردند
+        app = MDApp.get_running_app() # مهم
+        
         self.timer_running = False
-    
-        # ۲) پاک‌سازی مرجع زمان پایان قبل از لغو ایونت (محافظ قدرتمند)
         self.end_time = None
-    
-        # ۳) لغو ایونت ساعت اگر بود
         if getattr(self, "clock_event", None):
-            try:
-                self.clock_event.cancel()
-            except Exception:
-                pass
+            try: self.clock_event.cancel()
+            except: pass
             self.clock_event = None
     
-        # ۴) بازنشانی حالت/زمان به ابتدای همان مرحله (کار یا استراحت)
         if self.is_work_time:
-            self.time_left = int(self.cfg.work_min) * 60
+            self.time_left = int(app.config_engine.work_min) * 60
             self.status_text = "Ready to Focus?"
         else:
-            if self.cycles_completed == 0:
-                self.time_left = int(self.cfg.long_break_min) * 60
-                self.status_text = "Long Break! 🎉"
+            # لاجیک استراحت
+            if self.cycles_completed == 0: # یعنی سایکل تمام شده و دور بعد است
+                 # اینجا چون ریست دستی است معمولا برمی‌گردیم به حالت کار یا استراحت کوتاه
+                 self.time_left = int(app.config_engine.short_break_min) * 60
+                 self.status_text = "Break Time"
             else:
-                self.time_left = int(self.cfg.short_break_min) * 60
-                self.status_text = "Short Break ☕"
+                self.time_left = int(app.config_engine.short_break_min) * 60
+                self.status_text = "Break Time"
     
         self.total_time_session = self.time_left
-    
-        # ۵) UI
         self.update_display_time()
         self.progress_value = 0
-        current_cycle_display = self.cycles_completed + 1
-        self.cycle_text = f"Cycle: {current_cycle_display}/{self.cfg.cycles_limit}"
+        
+        self.cycle_text = f"Cycle: {self.cycles_completed}/{app.config_engine.cycles_limit}"
     
         try:
             self.ids.task_input.disabled = False
@@ -892,92 +893,76 @@ class HomeScreen(MDScreen):
             self.finish_session()
 
     def finish_early(self):
-        # محاسبه زمان
-        elapsed_seconds = self.total_seconds - self.remaining_seconds
-        elapsed_minutes = int(elapsed_seconds / 60) # تبدیل به int برای جلوگیری از خطا در خواندن فایل CSV
-        if elapsed_minutes < 1: elapsed_minutes = 1 # حداقل ۱ دقیقه ثبت شود
+        # استفاده از time_left و total_time_session صحیح
+        elapsed_seconds = self.total_time_session - self.time_left
+        elapsed_minutes = int(elapsed_seconds / 60)
+        if elapsed_minutes < 1: elapsed_minutes = 1 
         
-        # متوقف کردن تایمر (این تابع باید تعریف شده باشد، اگر نداری کد pause_timer پایین را هم اضافه کن)
         self.pause_timer() 
-        self.stop_sound() # قطع صدا
+        self.stop_sound()
         
         app = MDApp.get_running_app()
         task_name = self.ids.task_input.text or "General"
         
-        # ثبت در آمار
         if self.is_work_time:
+            # استفاده از app.config_engine
             app.config_engine.log_session("Work (Skipped)", elapsed_minutes, task_name)
         
         self.status_text = "Session Skipped"
         
-        # پرش به مرحله بعد
-        if self.is_work_time:
-             self.start_break()
-        else:
-             self.is_work_time = True
-             self.reset_timer()
+        # اتمام زودهنگام -> رفتن به حالت بعد (با فلگ Early)
+        self.finish_session(is_early=True)
 
     def finish_session(self, manual_duration=None, is_early=False):
-        # ۱. تایمر و ایونت‌ها را به طور کامل متوقف کن
         self.timer_running = False
         self.end_time = None
         if getattr(self, "clock_event", None):
             self.clock_event.cancel()
             self.clock_event = None
 
-        # ۲. اگر جلسه به طور طبیعی تمام شده، پروگرس را ۱۰۰ کن
         if not is_early:
             self.progress_value = 100
 
-        # --- آلارم و ویبره ---
+        # --- آلارم ---
         try:
             message = "Time for a break!" if self.is_work_time else "Back to work!"
             notification.notify(title="PomoPulse", message=message, timeout=5)
-            
             if platform == 'android' and hasattr(vibrator, 'vibrate'):
-                vibrator.vibrate(0.5) # ویبره نیم ثانیه‌ای
+                vibrator.vibrate(0.5)
+        except Exception:
+            pass
 
-            if winsound:
-                winsound.Beep(2500, 800)
-        except Exception as e:
-            print(f"Alarm Error: {e}")
-        # ---------------------
-
+        app = MDApp.get_running_app() # دسترسی به کانفیگ
         task_name = self.ids.task_input.text.strip() or "General"
         
-        # فقط برای جلسات کاری لاگ ثبت کن
-        if self.is_work_time:
-            session_type = "Work (Early)" if is_early else "Work"
-            duration_to_log = manual_duration if manual_duration is not None else int(self.cfg.work_min)
-            if duration_to_log > 0:
-                self.cfg.log_session(session_type, duration_to_log, task_name)
-            
+        if self.is_work_time and not is_early:
+            session_type = "Work"
+            duration_to_log = manual_duration if manual_duration is not None else int(app.config_engine.work_min)
+            app.config_engine.log_session(session_type, duration_to_log, task_name)
             self.cycles_completed += 1
 
-        # --- رفتن به مرحله بعد (کار یا استراحت) ---
-        if self.is_work_time: # تازه کار تمام شده -> برو به استراحت
+        # تغییر فاز
+        if self.is_work_time: 
             self.is_work_time = False
-            if self.cycles_completed >= self.cfg.cycles_limit:
+            if self.cycles_completed >= app.config_engine.cycles_limit:
                 self.status_text = "Long Break! 🎉"
-                self.time_left = int(self.cfg.long_break_min) * 60
-                self.cycles_completed = 0 # ریست کردن شمارنده برای دوره بعدی
+                self.time_left = int(app.config_engine.long_break_min) * 60
+                self.cycles_completed = 0
             else:
                 self.status_text = "Short Break ☕"
-                self.time_left = int(self.cfg.short_break_min) * 60
-        else: # استراحت تمام شده -> برو به کار
+                self.time_left = int(app.config_engine.short_break_min) * 60
+        else: 
             self.is_work_time = True
             self.status_text = "Back to Work! 🚀"
-            self.quote_text = random.choice(self.cfg.quotes) # تغییر جمله
-            self.time_left = int(self.cfg.work_min) * 60
+            self.quote_text = random.choice(self.quotes)
+            self.time_left = int(app.config_engine.work_min) * 60
             
-        # آپدیت UI برای مرحله جدید
         self.total_time_session = self.time_left
         self.update_display_time()
         self.progress_value = 0 
         
-        current_cycle = self.cycles_completed + 1
-        self.cycle_text = f"Cycle: {current_cycle}/{self.cfg.cycles_limit}"
-
+        self.cycle_text = f"Cycle: {self.cycles_completed}/{app.config_engine.cycles_limit}"
+        
 
 class SettingsScreen(MDScreen):
     def on_enter(self):
@@ -1178,6 +1163,7 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
+
 
 
 
