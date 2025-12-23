@@ -25,7 +25,6 @@ jobs:
       with:
         python-version: '3.10'
 
-    # اضافه شدن gettext و gperf برای حل مشکلات کامپایل احتمالی
     - name: Install System Dependencies
       run: |
         sudo apt-get update
@@ -37,7 +36,10 @@ jobs:
           libffi-dev libssl-dev libncurses5-dev libsqlite3-dev \
           libreadline-dev libbz2-dev liblzma-dev tk-dev \
           autoconf automake libtool pkg-config cmake zip unzip \
-          libjpeg-dev libfreetype6-dev
+          libjpeg-dev libfreetype6-dev \
+          python3-dev libpython3.10-dev \
+          libopenblas-dev libatlas-base-dev \
+          wget curl
 
     - name: Configure Buildozer and Dependencies
       run: |
