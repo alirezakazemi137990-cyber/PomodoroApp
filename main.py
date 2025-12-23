@@ -45,7 +45,7 @@ KV = '''
     name: "home"
     MDBoxLayout:
         orientation: 'vertical'
-        padding: [dp(20), dp(40), dp(20), dp(20)]
+        padding: [dp(20), dp(60), dp(20), dp(20)]
         spacing: dp(20)
         md_bg_color: 0.05, 0.05, 0.05, 1  # پس‌زمینه تیره مخصوص حالت گیمینگ
 
@@ -80,7 +80,7 @@ KV = '''
             MDLabel:
                 text: root.timer_text
                 font_style: "H1"
-                font_size: "80sp"
+                font_size: "90sp"
                 halign: "center"
                 theme_text_color: "Custom"
                 text_color: app.theme_cls.primary_color if root.is_work_time else (0, 0.9, 0.4, 1)
@@ -224,29 +224,46 @@ KV = '''
                 text_color: 0.4, 0.4, 0.4, 1
                 on_release: root.finish_early()
 
-        # --- منوی پایین (مخفی ولی در دسترس) ---
+        # --- 6. نوار پایین (Bottom Navigation Bar) ---
         MDBoxLayout:
             adaptive_height: True
-            spacing: dp(40)
-            pos_hint: {"center_x": .5}
-            
+            spacing: 0
+            padding: [dp(20), dp(10), dp(20), dp(10)]
+            size_hint_y: None
+            height: dp(60)
+
+            # فضای خالی برای هل دادن آیکون آمار به چپ
+            Widget:
+                size_hint_x: 1
+
             MDIconButton:
                 icon: "chart-bar"
                 theme_text_color: "Custom"
                 text_color: 0.4, 0.4, 0.4, 1
                 on_release: app.switch_screen("stats")
-                
+
+            Widget:
+                size_hint_x: 2
+
             MDIconButton:
                 icon: "account"
                 theme_text_color: "Custom"
                 text_color: 0.4, 0.4, 0.4, 1
                 on_release: app.switch_screen("profile")
 
+            # فضای خالی برای فاصله‌گذاری
+            Widget:
+                size_hint_x: 2
+
             MDIconButton:
                 icon: "cog"
                 theme_text_color: "Custom"
                 text_color: 0.4, 0.4, 0.4, 1
                 on_release: app.switch_screen("settings")
+
+            # فضای خالی برای هل دادن آیکون تنظیمات به راست
+            Widget:
+                size_hint_x: 1
 
 <SettingsScreen>:
     name: "settings"
@@ -1345,6 +1362,7 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
+
 
 
 
