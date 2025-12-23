@@ -36,7 +36,7 @@ jobs:
           libffi-dev libssl-dev libncurses5-dev libsqlite3-dev \
           libreadline-dev libbz2-dev liblzma-dev tk-dev \
           autoconf automake libtool pkg-config cmake zip unzip \
-          libjpeg-dev libfreetype6-dev \
+          libjpeg-dev libfreetype6-dev liblcms2-dev libwebp-dev libtiff-dev \
           python3-dev libpython3.10-dev \
           libopenblas-dev libatlas-base-dev \
           wget curl
