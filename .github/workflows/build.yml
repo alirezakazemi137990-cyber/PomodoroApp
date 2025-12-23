@@ -72,7 +72,7 @@ jobs:
         echo "Found Alias: $DETECTED_ALIAS"
 
         rm -rf .buildozer
-        yes | buildozer -v android debug
+        yes | buildozer -v android release
 
         echo "--- Locating Signing Tools ---"
         SDK_ROOT=~/.buildozer/android/platform/android-sdk
