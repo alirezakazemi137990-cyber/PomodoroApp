@@ -45,8 +45,8 @@ KV = '''
     name: "home"
     MDBoxLayout:
         orientation: 'vertical'
-        padding: [dp(20), dp(60), dp(20), dp(20)]
-        spacing: dp(20)
+        padding: [dp(20), dp(30), dp(20), dp(10)]
+        spacing: dp(8)
         md_bg_color: 0.05, 0.05, 0.05, 1  # پس‌زمینه تیره مخصوص حالت گیمینگ
 
         # --- 1. بخش نقل قول (The Quest Text) ---
@@ -73,14 +73,14 @@ KV = '''
             orientation: 'vertical'
             spacing: dp(10)
             size_hint_y: None
-            height: dp(200)
+            height: dp(140)
             pos_hint: {"center_x": .5}
 
             # تایمر غول‌پیکر
             MDLabel:
                 text: root.timer_text
                 font_style: "H1"
-                font_size: "90sp"
+                font_size: "65sp"
                 halign: "center"
                 theme_text_color: "Custom"
                 text_color: app.theme_cls.primary_color if root.is_work_time else (0, 0.9, 0.4, 1)
@@ -204,7 +204,7 @@ KV = '''
             MDIconButton:
                 id: btn_start
                 icon: "play-circle" if not root.timer_running else "pause-circle"
-                icon_size: "64sp"
+                icon_size: "48sp"
                 theme_text_color: "Custom"
                 text_color: app.theme_cls.primary_color if not root.timer_running else (1, 0.7, 0, 1)
                 on_release: root.toggle_timer()
@@ -1362,6 +1362,7 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
+
 
 
 
