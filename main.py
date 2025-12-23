@@ -112,7 +112,7 @@ KV = '''
                 MDTextField:
                     id: task_input
                     hint_text: "Enter your quest..."
-                    mode: "unstyled"
+                    mode: "line"
                     font_size: "16sp"
                     size_hint_x: 0.85
                     pos_hint: {"center_y": .5}
@@ -434,14 +434,14 @@ KV = '''
                 hint_text: "Display Name"
                 text: app.config_engine.user_name
                 icon_right: "account-edit"
-                mode: "fill"
+                mode: "line"
 
             MDTextField:
                 id: user_title
                 hint_text: "Job Title / Tagline"
                 text: app.config_engine.user_title
                 icon_right: "briefcase-edit"
-                mode: "fill"
+                mode: "line"
 
         MDBoxLayout:
             adaptive_height: True
@@ -1345,6 +1345,7 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
+
 
 
 
