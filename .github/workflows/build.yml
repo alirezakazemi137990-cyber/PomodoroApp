@@ -59,36 +59,36 @@ jobs:
         # اطمینان از پذیرش لایسنس
         sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
        
-    - name: Build Stable & Sign Manually
-      env:
-        ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
-      run: |
-        set -e
-        echo "$ANDROID_KEYSTORE_B64" | base64 --decode > keystore.jks
-        MY_PASS="123456"
-        
-        echo "--- Detecting Alias ---"
-        DETECTED_ALIAS=$(keytool -list -v -keystore keystore.jks -storepass "$MY_PASS" | grep "Alias name:" | head -n 1 | sed 's/Alias name: //g' | xargs)
-        echo "Found Alias: $DETECTED_ALIAS"
+- name: Build Stable & Sign Manually
+  env:
+    ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+  run: |
+    set -e
+    echo "$ANDROID_KEYSTORE_B64" | base64 --decode > keystore.jks
+    MY_PASS="123456"
+    
+    echo "--- Detecting Alias ---"
+    DETECTED_ALIAS=$(keytool -list -v -keystore keystore.jks -storepass "$MY_PASS" | grep "Alias name:" | head -n 1 | sed 's/Alias name: //g' | xargs)
+    echo "Found Alias: $DETECTED_ALIAS"
 
-        rm -rf .buildozer
-        yes | buildozer -v android debug
+    rm -rf .buildozer
 
-        echo "--- Locating Signing Tools ---"
-        SDK_ROOT=~/.buildozer/android/platform/android-sdk
-        ZIPALIGN=$(find $SDK_ROOT -name zipalign | sort -r | head -n 1)
-        APKSIGNER=$(find $SDK_ROOT -name apksigner | sort -r | head -n 1)
-        
-        INPUT_APK=$(find bin -name "*-debug.apk" | head -n 1)
-        
-        $ZIPALIGN -v -p 4 "$INPUT_APK" release-aligned.apk
-        $APKSIGNER sign --ks keystore.jks --ks-pass pass:"$MY_PASS" --ks-key-alias "$DETECTED_ALIAS" --out release-signed.apk release-aligned.apk
-        $APKSIGNER verify release-signed.apk
-        
-        # تغییر نام نهایی
-        mv release-signed.apk bin/Pomodoro-Final-Signed.apk
+    # حذف yes | و فقط اجرای بیلدایزر به صورت مستقیم برای بهتر دیده شدن خطا
+    buildozer -v android debug
 
-    # --- قسمت جدید که باید اضافه شود ---
+    echo "--- Locating Signing Tools ---"
+    SDK_ROOT=~/.buildozer/android/platform/android-sdk
+    ZIPALIGN=$(find $SDK_ROOT -name zipalign | sort -r | head -n 1)
+    APKSIGNER=$(find $SDK_ROOT -name apksigner | sort -r | head -n 1)
+    
+    INPUT_APK=$(find bin -name "*-debug.apk" | head -n 1)
+    
+    $ZIPALIGN -v -p 4 "$INPUT_APK" release-aligned.apk
+    $APKSIGNER sign --ks keystore.jks --ks-pass pass:"$MY_PASS" --ks-key-alias "$DETECTED_ALIAS" --out release-signed.apk release-aligned.apk
+    $APKSIGNER verify release-signed.apk
+    
+    mv release-signed.apk bin/Pomodoro-Final-Signed.apk
+
     - name: Upload Final Artifact
       uses: actions/upload-artifact@v4
       with:
