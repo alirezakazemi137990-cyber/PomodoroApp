@@ -125,6 +125,17 @@ KV = '''
             theme_text_color: "Hint"
             font_style: "Caption"
 
+        MDLabel:
+            text: root.level_title
+            halign: "center"
+            theme_text_color: "Custom"
+            text_color: app.theme_cls.primary_color
+            font_style: "Subtitle1"
+
+        MDProgressBar:
+            value: root.level_progress
+            color: app.theme_cls.primary_color
+
         # --- Controls ---
         MDBoxLayout:
             adaptive_height: True
@@ -398,6 +409,58 @@ KV = '''
 
         Widget:
 '''
+# ==========================================
+# Gamification Engine (Hero's Journey)
+# ==========================================
+class GamificationEngine:
+    """موتور محاسبه XP و سطح کاربر بر اساس تاریخچه پومودورو"""
+    def __init__(self, history_file):
+        self.history_file = history_file
+        self.levels = [
+            (0,     300,  "The Starter"),
+            (300,   1200, "The Believer"),
+            (1200,  3000, "The Warrior"),
+            (3000,  6000, "The Master"),
+            (6000,  None, "The Legend")
+        ]
+
+    def get_total_xp(self):
+        """مجموع دقیقه‌های کار (XP) از تاریخچه را برمی‌گرداند"""
+        total = 0
+        if not os.path.exists(self.history_file):
+            return total
+        try:
+            with open(self.history_file, 'r', encoding='utf-8') as f:
+                reader = csv.reader(f)
+                next(reader, None)  # skip header
+                for row in reader:
+                    if len(row) < 3:
+                        continue
+                    if row[1].startswith("Work"):
+                        try:
+                            total += int(row[2])
+                        except ValueError:
+                            pass
+        except Exception as e:
+            print(f"Error reading XP: {e}")
+        return total
+
+    def get_user_level(self):
+        """سطح فعلی، لقب، XP باقی‌مانده و درصد پیشرفت را برمی‌گرداند"""
+        xp = self.get_total_xp()
+        for i, (min_xp, max_xp, title) in enumerate(self.levels):
+            if max_xp is None:  # آخرین سطح
+                prev_min = self.levels[i-1][0] if i > 0 else 0
+                progress = 1.0
+                xp_to_next = 0
+                return i+1, title, prev_min, None, progress, xp_to_next
+            if min_xp <= xp < max_xp:
+                progress = (xp - min_xp) / (max_xp - min_xp)
+                xp_to_next = max_xp - xp
+                return i+1, title, min_xp, max_xp, progress, xp_to_next
+        # اگر XP از آخرین سطح هم بیشتر باشد
+        last_level = self.levels[-1]
+        return len(self.levels), last_level[2], last_level[0], None, 1.0, 0
 
 # ==========================================
 # 2. منطق برنامه (Logic Engine)
@@ -417,6 +480,7 @@ class PomodoroConfig:
 
         self.filename = os.path.join(self.data_dir, 'config.ini')
         self.history_file = os.path.join(self.data_dir, 'pomodoro_history.csv')
+        self.gamification = GamificationEngine(self.history_file)
         
         # --- لیست جملات انگیزشی ---
         self.quotes = [
@@ -583,6 +647,9 @@ class PomodoroConfig:
             "skipped_count": skipped_count,
             "total_mins": grand_total_mins
         }
+    def get_user_level(self):
+        """اطلاعات سطح کاربر را برمی‌گرداند"""
+        return self.gamification.get_user_level()
 
     def save_config(self):
         self.config['SETTINGS']['work_minutes'] = str(self.work_min)
@@ -611,6 +678,8 @@ class HomeScreen(MDScreen):
     current_sound = None
     is_sound_playing = False
     is_playing_sound = BooleanProperty(False)
+    level_title = StringProperty("")
+    level_progress = NumericProperty(0)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -672,6 +741,7 @@ class HomeScreen(MDScreen):
 
             
         self.cycle_text = f"Cycle: {self.cycles_completed}/{app.config_engine.cycles_limit}"
+        self.update_level_display()
         
         # --- ساخت منوی انتخاب صدا ---
         sound_items = [
@@ -877,6 +947,15 @@ class HomeScreen(MDScreen):
         val = int(seconds_val)
         m, s = divmod(val, 60)
         self.timer_text = f"{m:02d}:{s:02d}"
+        
+    def update_level_display(self):
+        """سطح و پیشرفت کاربر را از موتور گیمیفیکیشن می‌خواند و نمایش می‌دهد"""
+        app = MDApp.get_running_app()
+        level_info = app.config_engine.get_user_level()
+        if level_info:
+            level_num, title, _, _, progress, _ = level_info
+            self.level_title = f"Level {level_num}: {title}"
+            self.level_progress = progress * 100  # برای نوار پیشرفت (۰ تا ۱۰۰)
 
     def toggle_timer(self):
         raw_task = self.ids.task_input.text.strip()
@@ -1214,6 +1293,7 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
+
 
 
 
