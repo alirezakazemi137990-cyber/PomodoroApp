@@ -45,224 +45,124 @@ KV = '''
     name: "home"
     MDBoxLayout:
         orientation: 'vertical'
-        padding: [dp(20), dp(50), dp(20), dp(10)]  # فاصله از بالا کمی بیشتر شد
-        spacing: dp(15)                             # فاصله بین المان‌ها کمی بیشتر شد
-        md_bg_color: 0.05, 0.05, 0.05, 1
+        padding: dp(20)
+        spacing: dp(15)
 
-        # کارت اول حذف شد (The Quest Text Removed)
-
-        # --- 2. تایمر بزرگ (The Focus Core) ---
-        MDBoxLayout:
-            orientation: 'vertical'
-            spacing: dp(10)
-            size_hint_y: None
-            height: dp(160)       # ارتفاع کمی بیشتر شد تا تایمر جا دارتر باشد
-            pos_hint: {"center_x": .5}
-
-            # تایمر غول‌پیکر
-            MDLabel:
-                text: root.timer_text
-                font_style: "H1"
-                font_size: "100sp"   # سایز فونت کمی بزرگتر شد (از 90 به 100)
-                halign: "center"
-                theme_text_color: "Custom"
-                text_color: app.theme_cls.primary_color if root.is_work_time else (0, 0.9, 0.4, 1)
-                bold: True
-
-            # نمایش نقل‌قول (زمانی که تایمر فعال است)
-            MDLabel:
-                text: root.quote_text
-                font_style: "Caption"
-                theme_text_color: "Custom"
-                text_color: 0.8, 0.8, 0.8, 1
-                halign: "center"
-                valign: "center"
-                italic: True
-                opacity: 1 if root.show_quote else 0
-                size_hint_y: None
-                height: 0 if not root.show_quote else dp(30)
-
-            # نمایش وضعیت (زمانی که تایمر غیرفعال است)
-            MDLabel:
-                text: root.status_text.upper()
-                halign: "center"
-                theme_text_color: "Custom"
-                text_color: 0.5, 0.5, 0.5, 1
-                font_style: "Button"
-                letter_spacing: dp(2)
-                opacity: 1 if not root.show_quote else 0
-                size_hint_y: None
-                height: 0 if root.show_quote else dp(30)
-
-        # --- 3. ورودی تسک (The Mission Box) ---
-        MDBoxLayout:
-            adaptive_height: True
-            spacing: dp(10)
-            padding: [dp(20), 0]
-            
-            MDCard:
-                size_hint_y: None
-                height: dp(50)
-                radius: [25]
-                md_bg_color: 0.12, 0.12, 0.12, 1
-                padding: [dp(15), 0, dp(5), 0]
-                line_color: (0.3, 0.3, 0.3, 1)
-                
-                MDTextField:
-                    id: task_input
-                    hint_text: "Enter your quest..."
-                    mode: "line"
-                    font_size: "16sp"
-                    size_hint_x: 0.85
-                    pos_hint: {"center_y": .5}
-                    text_color_normal: 1, 1, 1, 1
-                    text_color_focus: 1, 1, 1, 1
-                    hint_text_color_normal: 0.5, 0.5, 0.5, 1
-
-                MDIconButton:
-                    icon: "tag-outline"
-                    theme_text_color: "Custom"
-                    text_color: app.theme_cls.primary_color
-                    on_release: root.open_tag_menu()
-                    pos_hint: {"center_y": .5}
-
-        # فضای پرکننده (Spacer)
-        Widget:
-
-        # --- 4. کارت وضعیت قهرمان (Hero Stat Card) ---
+        # 1. کارت قهرمان (بالا)
         MDCard:
-            size_hint_y: None
-            height: dp(90)
-            radius: [20]
-            md_bg_color: 0.1, 0.12, 0.15, 1
-            line_color: app.theme_cls.primary_color
-            line_width: 1.2
-            padding: dp(15)
-            spacing: dp(15)
-            elevation: 4
+            orientation: "vertical"
+            padding: dp(20)
+            spacing: dp(10)
+            size_hint: 1, None
+            height: dp(120)
+            radius: [15]
 
-            # آیکون سطح (Badge)
-            MDIcon:
-                icon: "shield-star"
-                font_size: "40sp"
+            MDLabel:
+                text: root.greeting_text
+                font_style: "H5"
                 theme_text_color: "Custom"
                 text_color: app.theme_cls.primary_color
-                pos_hint: {"center_y": .5}
-                size_hint_x: None
-                width: dp(50)
+                halign: "center"
 
-            # اطلاعات متنی و نوار پیشرفت
-            MDBoxLayout:
-                orientation: "vertical"
-                spacing: dp(5)
-                pos_hint: {"center_y": .5}
+            MDLabel:
+                text: root.user_title_text
+                font_style: "Caption"
+                theme_text_color: "Secondary"
+                halign: "center"
 
-                MDBoxLayout:
-                    adaptive_height: True
-                    MDLabel:
-                        text: root.level_title
-                        font_style: "Subtitle1"
-                        bold: True
-                        theme_text_color: "Custom"
-                        text_color: 1, 1, 1, 1
-                    
-                    MDLabel:
-                        text: root.cycle_text
-                        halign: "right"
-                        font_style: "Caption"
-                        theme_text_color: "Hint"
+        # 2. ورودی تسک
+        MDTextField:
+            id: task_input
+            hint_text: "Task Name"
+            mode: "rectangle"
+            size_hint_x: 0.9
+            pos_hint: {"center_x": 0.5}
 
-                # نوار پیشرفت XP
-                MDProgressBar:
-                    value: root.level_progress
-                    color: app.theme_cls.primary_color
-                    back_color: 0.2, 0.2, 0.2, 1
-                    size_hint_y: None
-                    height: dp(6)
-                    radius: [3]
+        # 3. پیام وضعیت (Quote)
+        MDLabel:
+            text: root.quote_text
+            halign: "center"
+            theme_text_color: "Secondary"
+            font_style: "Subtitle1"
+            size_hint_y: None
+            height: dp(40)
 
-                MDLabel:
-                    text: "XP needed for next rank"
-                    font_style: "Overline"
-                    theme_text_color: "Hint"
+        # 4. تایمر (مرکز صفحه)
+        MDLabel:
+            text: root.timer_text
+            font_style: "H2"
+            halign: "center"
+            theme_text_color: "Custom"
+            text_color: app.theme_cls.primary_color if root.is_work_time else (0, 0.8, 0, 1)
+            size_hint_y: None
+            height: dp(100)
 
-        # --- 5. کنترل‌ها (Game Controllers) ---
+        # 5. دکمه‌های کنترل (زیر تایمر)
         MDBoxLayout:
             adaptive_height: True
-            spacing: dp(30)
+            spacing: dp(20)
             pos_hint: {"center_x": .5}
-            padding: [0, dp(10), 0, 0]
 
             MDIconButton:
                 icon: "refresh"
-                theme_text_color: "Custom"
-                text_color: 0.6, 0.6, 0.6, 1
                 on_release: root.reset_timer()
 
-            # دکمه اصلی (Play/Pause) بزرگ
-            MDIconButton:
+            MDFillRoundFlatButton:
                 id: btn_start
-                icon: "play-circle" if not root.timer_running else "pause-circle"
-                icon_size: "48sp"
-                theme_text_color: "Custom"
-                text_color: app.theme_cls.primary_color if not root.timer_running else (1, 0.7, 0, 1)
+                text: "START" if not root.timer_running else "PAUSE"
+                font_size: "18sp"
+                size_hint_x: 0.5
                 on_release: root.toggle_timer()
+                md_bg_color: app.theme_cls.primary_color if not root.timer_running else (1, 0.6, 0, 1)
 
-            MDIconButton:
-                id: btn_sound
-                icon: "music-note" if not root.is_playing_sound else "music-note-off"
-                theme_text_color: "Custom"
-                text_color: 0.6, 0.6, 0.6, 1 if not root.is_playing_sound else app.theme_cls.primary_color
-                on_release: root.open_sound_menu()
-            
-            # دکمه اتمام سریع (مخفی برای زیبایی اما فعال)
             MDIconButton:
                 icon: "skip-next"
                 disabled: not root.timer_running
-                theme_text_color: "Custom"
-                text_color: 0.4, 0.4, 0.4, 1
                 on_release: root.finish_early()
 
-        # --- 6. نوار پایین (Bottom Navigation Bar) ---
+        # 6. نوار پایین (ثابت) - با سه آیکون
         MDBoxLayout:
             adaptive_height: True
-            spacing: 0
-            padding: [dp(20), dp(10), dp(20), dp(10)]
-            size_hint_y: None
-            height: dp(60)
+            spacing: dp(10)
+            padding: [0, dp(20), 0, 0]
+            pos_hint: {"center_x": 0.5}
 
-            # فضای خالی برای هل دادن آیکون آمار به چپ
-            Widget:
-                size_hint_x: 1
-
-            MDIconButton:
-                icon: "chart-bar"
-                theme_text_color: "Custom"
-                text_color: 0.4, 0.4, 0.4, 1
-                on_release: app.switch_screen("stats")
-
-            Widget:
-                size_hint_x: 2
-
-            MDIconButton:
-                icon: "account"
-                theme_text_color: "Custom"
-                text_color: 0.4, 0.4, 0.4, 1
-                on_release: app.switch_screen("profile")
-
-            # فضای خالی برای فاصله‌گذاری
-            Widget:
-                size_hint_x: 2
-
+            # تنظیمات (سمت راست)
             MDIconButton:
                 icon: "cog"
-                theme_text_color: "Custom"
-                text_color: 0.4, 0.4, 0.4, 1
+                disabled: root.timer_running
+                text_color: app.theme_cls.disabled_hint_text_color if root.timer_running else app.theme_cls.primary_color
                 on_release: app.switch_screen("settings")
+                pos_hint: {"right": 1}
 
-            # فضای خالی برای هل دادن آیکون تنظیمات به راست
+            # اسپیسر مرکزی
             Widget:
-                size_hint_x: 1
+                size_hint_x: 0.4
+
+            # آمار (وسط)
+            MDIconButton:
+                icon: "chart-bar"
+                disabled: root.timer_running
+                text_color: app.theme_cls.disabled_hint_text_color if root.timer_running else app.theme_cls.primary_color
+                on_release: app.switch_screen("stats")
+                pos_hint: {"center_x": 0.5}
+
+            # اسپیسر مرکزی
+            Widget:
+                size_hint_x: 0.4
+
+            # پروفایل (سمت چپ)
+            MDIconButton:
+                icon: "account"
+                disabled: root.timer_running
+                text_color: app.theme_cls.disabled_hint_text_color if root.timer_running else app.theme_cls.primary_color
+                on_release: app.switch_screen("profile")
+                pos_hint: {"left": 1}
+
+        # فضای خالی پایین برای جداسازی بهتر
+        Widget:
+            size_hint_y: None
+            height: dp(10)
 
 <SettingsScreen>:
     name: "settings"
@@ -1378,6 +1278,7 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
+
 
 
 
