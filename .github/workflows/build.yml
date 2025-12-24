@@ -29,11 +29,11 @@ jobs:
           sudo apt-get update
           # Fix specific dependency conflict
           sudo apt-get install -y libunwind-dev
-          # Install main dependencies
+          # Install main dependencies (Added autopoint and libltdl-dev)
           sudo apt-get install -y build-essential libssl-dev libffi-dev \
           python3-dev git ffmpeg libsdl2-dev libgstreamer1.0-dev \
           libgstreamer-plugins-base1.0-dev libfreetype6-dev autoconf libtool \
-          openjdk-17-jdk unzip zlib1g-dev
+          openjdk-17-jdk unzip zlib1g-dev autopoint libltdl-dev
 
       - name: Fix FreeType Linker Issue
         run: |
@@ -51,9 +51,8 @@ jobs:
         env:
           _JAVA_OPTIONS: "-Djava.net.preferIPv4Stack=true"
         run: |
-          # دستور clean حذف شد چون در سرور خام (Fresh) باعث ارور می‌شود
-          yes | buildozer android release
-
+          # Added -v for verbose logging to catch the real error
+          yes | buildozer -v android release
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
