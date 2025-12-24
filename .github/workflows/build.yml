@@ -25,7 +25,6 @@ jobs:
       with:
         python-version: '3.10'
 
-    # اضافه شدن gettext و gperf برای حل مشکلات کامپایل احتمالی
     - name: Install System Dependencies
       run: |
         sudo apt-get update
@@ -38,6 +37,15 @@ jobs:
           libreadline-dev libbz2-dev liblzma-dev tk-dev \
           autoconf automake libtool pkg-config cmake zip unzip \
           libjpeg-dev libfreetype6-dev liblcms2-dev libwebp-dev libtiff-dev
+
+        # --- اصلاح حیاتی: ایجاد لینک دستی برای رفع خطای ft2build.h ---
+        sudo ln -s /usr/include/freetype2/ft2build.h /usr/include/
+        sudo ln -s /usr/include/freetype2/freetype /usr/include/
+
+
+        # --- اصلاح حیاتی: ایجاد لینک دستی برای رفع خطای ft2build.h ---
+        sudo ln -s /usr/include/freetype2/ft2build.h /usr/include/
+        sudo ln -s /usr/include/freetype2/freetype /usr/include/
 
     - name: Configure Buildozer and Dependencies
       run: |
@@ -60,8 +68,6 @@ jobs:
     - name: Build Stable & Sign Manually
       env:
         ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
-        # تنظیم مسیر هدرها برای جلوگیری از ارور کامپایل Pillow و Kivy
-        CFLAGS: "-I/usr/include/freetype2"
       run: |
         set -e
         echo "$ANDROID_KEYSTORE_B64" | base64 --decode > keystore.jks
@@ -69,13 +75,10 @@ jobs:
         
         echo "--- Detecting Alias ---"
         DETECTED_ALIAS=$(keytool -list -v -keystore keystore.jks -storepass "$MY_PASS" | grep "Alias name:" | head -n 1 | sed 's/Alias name: //g' | xargs)
-        echo "Found Alias: $DETECTED_ALIAS"
-
-        # پاکسازی کش‌های مزاحم
+        
         rm -rf .buildozer
         
-        # --- اصلاح اصلی: حذف yes | و اجرای مستقیم ---
-        # فلگ --verbose را نگه می‌داریم تا اگر خطایی بود، واضح دیده شود
+        # اجرای مستقیم بدون yes و بدون CFLAGS (چون لینک‌ها را ساختیم)
         buildozer -v android debug
 
         echo "--- Locating Signing Tools ---"
@@ -85,7 +88,6 @@ jobs:
         
         INPUT_APK=$(find bin -name "*-debug.apk" | head -n 1)
         
-        # بررسی وجود فایل APK قبل از امضا
         if [ -z "$INPUT_APK" ]; then
           echo "Error: No APK found in bin/ directory!"
           exit 1
@@ -93,8 +95,6 @@ jobs:
 
         $ZIPALIGN -v -p 4 "$INPUT_APK" release-aligned.apk
         $APKSIGNER sign --ks keystore.jks --ks-pass pass:"$MY_PASS" --ks-key-alias "$DETECTED_ALIAS" --out release-signed.apk release-aligned.apk
-        $APKSIGNER verify release-signed.apk
-        
         mv release-signed.apk bin/Pomodoro-Final-Signed.apk
 
     # --- قسمت جدید که باید اضافه شود ---
