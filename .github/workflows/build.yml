@@ -39,11 +39,7 @@ jobs:
           libjpeg-dev libfreetype6-dev liblcms2-dev libwebp-dev libtiff-dev
 
         # --- اصلاح حیاتی: ایجاد لینک دستی برای رفع خطای ft2build.h ---
-        sudo ln -s /usr/include/freetype2/ft2build.h /usr/include/
-        sudo ln -s /usr/include/freetype2/freetype /usr/include/
-
-
-        # --- اصلاح حیاتی: ایجاد لینک دستی برای رفع خطای ft2build.h ---
+        # فقط یک بار اجرا شود
         sudo ln -s /usr/include/freetype2/ft2build.h /usr/include/
         sudo ln -s /usr/include/freetype2/freetype /usr/include/
 
@@ -78,7 +74,7 @@ jobs:
         
         rm -rf .buildozer
         
-        # اجرای مستقیم بدون yes و بدون CFLAGS (چون لینک‌ها را ساختیم)
+        # اجرای مستقیم بدون yes و بدون CFLAGS (چون لینک‌ها را در مرحله قبل ساختیم)
         buildozer -v android debug
 
         echo "--- Locating Signing Tools ---"
@@ -88,6 +84,7 @@ jobs:
         
         INPUT_APK=$(find bin -name "*-debug.apk" | head -n 1)
         
+        # چک کردن اینکه APK ساخته شده یا نه
         if [ -z "$INPUT_APK" ]; then
           echo "Error: No APK found in bin/ directory!"
           exit 1
@@ -97,7 +94,6 @@ jobs:
         $APKSIGNER sign --ks keystore.jks --ks-pass pass:"$MY_PASS" --ks-key-alias "$DETECTED_ALIAS" --out release-signed.apk release-aligned.apk
         mv release-signed.apk bin/Pomodoro-Final-Signed.apk
 
-    # --- قسمت جدید که باید اضافه شود ---
     - name: Upload Final Artifact
       uses: actions/upload-artifact@v4
       with:
