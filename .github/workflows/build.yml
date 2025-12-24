@@ -60,6 +60,8 @@ jobs:
     - name: Build Stable & Sign Manually
       env:
         ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+        # تنظیم مسیر هدرها برای جلوگیری از ارور کامپایل Pillow و Kivy
+        CFLAGS: "-I/usr/include/freetype2"
       run: |
         set -e
         echo "$ANDROID_KEYSTORE_B64" | base64 --decode > keystore.jks
@@ -69,8 +71,12 @@ jobs:
         DETECTED_ALIAS=$(keytool -list -v -keystore keystore.jks -storepass "$MY_PASS" | grep "Alias name:" | head -n 1 | sed 's/Alias name: //g' | xargs)
         echo "Found Alias: $DETECTED_ALIAS"
 
+        # پاکسازی کش‌های مزاحم
         rm -rf .buildozer
-        yes | buildozer -v android debug
+        
+        # --- اصلاح اصلی: حذف yes | و اجرای مستقیم ---
+        # فلگ --verbose را نگه می‌داریم تا اگر خطایی بود، واضح دیده شود
+        buildozer -v android debug
 
         echo "--- Locating Signing Tools ---"
         SDK_ROOT=~/.buildozer/android/platform/android-sdk
@@ -79,11 +85,16 @@ jobs:
         
         INPUT_APK=$(find bin -name "*-debug.apk" | head -n 1)
         
+        # بررسی وجود فایل APK قبل از امضا
+        if [ -z "$INPUT_APK" ]; then
+          echo "Error: No APK found in bin/ directory!"
+          exit 1
+        fi
+
         $ZIPALIGN -v -p 4 "$INPUT_APK" release-aligned.apk
         $APKSIGNER sign --ks keystore.jks --ks-pass pass:"$MY_PASS" --ks-key-alias "$DETECTED_ALIAS" --out release-signed.apk release-aligned.apk
         $APKSIGNER verify release-signed.apk
         
-        # تغییر نام نهایی
         mv release-signed.apk bin/Pomodoro-Final-Signed.apk
 
     # --- قسمت جدید که باید اضافه شود ---
