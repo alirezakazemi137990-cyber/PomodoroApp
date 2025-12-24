@@ -107,6 +107,11 @@ KV = '''
                 icon: "refresh"
                 on_release: root.reset_timer()
 
+            MDIconButton:
+                id: btn_sound
+                icon: "music-note-off"
+                on_release: root.open_sound_menu()
+
             MDFillRoundFlatButton:
                 id: btn_start
                 text: "START" if not root.timer_running else "PAUSE"
@@ -687,6 +692,7 @@ class HomeScreen(MDScreen):
         Clock.schedule_once(self.start_background_loading, 1)
 
     def on_enter(self):
+        super().on_enter()  # فراخوانی متد پایه برای جلوگیری از AttributeError
         app = MDApp.get_running_app()
         self.greeting_text = f"Hi, {app.config_engine.user_name}"
         self.user_title_text = app.config_engine.user_title
@@ -705,10 +711,10 @@ class HomeScreen(MDScreen):
                 "Don't watch the clock; do what it does. Keep going.",
                 "Success is the sum of small efforts, repeated day in and day out."
             ]
+        # فقط در صورت خالی بودن quote_text، یک نقل‌قول جدید انتخاب کن
         if not self.quote_text:
             self.quote_text = random.choice(self.quotes)
 
-            
         self.cycle_text = f"Cycle: {self.cycles_completed}/{app.config_engine.cycles_limit}"
         self.update_level_display()
         
@@ -724,6 +730,7 @@ class HomeScreen(MDScreen):
             items=sound_items,
             width_mult=2,
         )
+
     def start_background_loading(self, dt):
         """این تابع ۱ ثانیه بعد از لود شدن برنامه اجرا می‌شود"""
         threading.Thread(target=self.preload_sounds_background, daemon=True).start()
@@ -1278,29 +1285,3 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
