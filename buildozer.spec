@@ -25,9 +25,8 @@ source.exclude_dirs = tests, bin, venv, __pycache__
 version = 1.1
 
 # (list) Application requirements
-requirements = python3,kivy==2.2.1,kivymd==1.1.1,pillow,plyer,pyjnius,cython==0.29.36,ffpyplayer,ffpyplayer_codecs
-
-
+requirements = python3,kivy==2.2.1,kivymd==1.1.1,pillow==9.5.0,plyer,pyjnius
+android.p4a_branch = develop
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
 # requirements.source.kivy = ../../kivy
@@ -193,7 +192,9 @@ android.accept_sdk_license = True
 #android.add_resources =
 
 # (list) Gradle dependencies to add
-android.gradle_dependencies = com.google.android.material:material:1.8.0
+# در بخش [app]
+android.gradle_dependencies = com.google.android.material:material:1.9.0,androidx.core:core-ktx:1.10.1
+android.enable_jetifier = True
 
 # (bool) Enable AndroidX support. Enable when 'android.gradle_dependencies'
 # contains an 'androidx' package, or any package from Kotlin source.
@@ -275,7 +276,7 @@ android.wakelock = True
 
 # (list) The Android archs to build for, choices: armeabi-v7a, arm64-v8a, x86, x86_64
 # In past, was `android.arch` as we weren't supporting builds for multiple archs at the same time.
-android.archs = arm64-v8a, armeabi-v7a
+android.arch = arm64-v8a
 
 # (int) overrides automatic versionCode computation (used in build.gradle)
 # this is not the same as app version and should only be edited if you know what you're doing
@@ -404,6 +405,8 @@ warn_on_root = 1
 
 # (str) Path to build output (i.e. .apk, .aab, .ipa) storage
 # bin_dir = ./bin
+# در بخش [app]
+android.pre_build_cmds = ranlib {{dist_dir}}/lib/libfreetype.a
 
 #    -----------------------------------------------------------------------------
 #    List as sections
@@ -448,6 +451,7 @@ android.release.keystore = my-key.keystore
 android.release.keyalias = my-alias
 android.release.keystore_password = 123456
 android.release.keyalias_password = 123456
+
 
 
 
