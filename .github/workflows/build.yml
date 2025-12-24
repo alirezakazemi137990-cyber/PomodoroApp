@@ -41,13 +41,22 @@ jobs:
           pip install --upgrade pip
           pip install buildozer cython==0.29.33
 
+      - name: Manual Ant Download (Fix Network Error)
+        run: |
+          # Manually download Ant to prevent Python socket error in Buildozer
+          mkdir -p ~/.buildozer/android/platform
+          cd ~/.buildozer/android/platform
+          wget https://archive.apache.org/dist/ant/binaries/apache-ant-1.9.4-bin.tar.gz
+          tar -xvzf apache-ant-1.9.4-bin.tar.gz
+          rm apache-ant-1.9.4-bin.tar.gz
+
       - name: Build APK
         env:
           _JAVA_OPTIONS: "-Djava.net.preferIPv4Stack=true"
         run: |
           # Changed to debug to get a signed APK automatically
           yes | buildozer -v android debug
-
+          
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
