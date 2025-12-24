@@ -963,8 +963,9 @@ class HomeScreen(MDScreen):
                     self.ids.btn_sound.icon = "music-note"
                     self.ids.btn_sound.md_bg_color = (0.2, 0.6, 1, 0.2) # هایلایت آبی
                     self.is_sound_playing = True
-            else:
-                
+                else:
+                    pass 
+                    
     def pause_timer(self):
         self.timer_running = False
         self.status_text = "Paused"
@@ -1377,6 +1378,7 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
+
 
 
 
