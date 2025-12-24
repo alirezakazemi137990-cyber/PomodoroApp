@@ -27,13 +27,7 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt-get update
-          # Fix specific dependency conflict
-          sudo apt-get install -y libunwind-dev
-          # Install main dependencies (Added autopoint and libltdl-dev)
-          sudo apt-get install -y build-essential libssl-dev libffi-dev \
-          python3-dev git ffmpeg libsdl2-dev libgstreamer1.0-dev \
-          libgstreamer-plugins-base1.0-dev libfreetype6-dev autoconf libtool \
-          openjdk-17-jdk unzip zlib1g-dev autopoint libltdl-dev
+          sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev ant
 
       - name: Fix FreeType Linker Issue
         run: |
