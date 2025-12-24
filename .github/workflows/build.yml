@@ -1,63 +1,60 @@
-name: Build Android APK
+name: Build Android APK (Manual Setup)
 
 on:
   push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
-  workflow_dispatch: # Allows manual triggering
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-22.04
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-    - name: Build with Buildozer
-      uses: arturoherrero/buildozer-action@v1
-      with:
-        workdir: '.' # Set if your app is in a subdirectory
-        buildozer_version: 'stable'
-        args: 'android debug'
-      env:
-        # Critical: Accept SDK licenses to avoid interactive prompts
-        ACCEPT_LICENSES: 'yes'
-        # Optional: Set Buildozer cache for faster builds
-        BUILDOZER_BUILD_DIR: '/tmp/buildozer'
+      - name: Setup Java 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
 
-    - name: List APK files (Debug)
-      run: |
-        find . -name "*.apk" -type f | head -20
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
 
-    - name: Sign APK (Release)
-      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-      run: |
-        # Setup Java and keytool
-        sudo apt-get update && sudo apt-get install -y openjdk-11-jdk-headless
-        # Decode the keystore from GitHub Secrets
-        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > keystore.jks
-        # Locate the built APK (adjust path if needed)
-        APK_PATH=$(find . -name "*debug*.apk" -type f | head -1)
-        if [ -z "$APK_PATH" ]; then
-          echo "Error: No debug APK found!"
-          exit 1
-        fi
-        # Align and sign the APK
-        ${ANDROID_HOME}/build-tools/33.0.0/zipalign -v -p 4 "$APK_PATH" app-unsigned-aligned.apk
-        ${ANDROID_HOME}/build-tools/33.0.0/apksigner sign \
-          --ks keystore.jks \
-          --ks-pass pass:"${{ secrets.KEYSTORE_PASSWORD }}" \
-          --key-pass pass:"${{ secrets.KEY_PASSWORD }}" \
-          --out bin/Pomodoro-Final-Signed.apk \
-          app-unsigned-aligned.apk
-        echo "Signed APK created: bin/Pomodoro-Final-Signed.apk"
+      - name: Install System Dependencies
+        # نصب دستی کتابخانه‌های مورد نیاز برای کامپایل
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libssl-dev libffi-dev \
+          python3-dev git ffmpeg libsdl2-dev libgstreamer1.0-dev \
+          libgstreamer-plugins-base1.0-dev libfreetype6-dev autoconf libtool \
+          openjdk-17-jdk unzip zlib1g-dev
 
-    - name: Upload Signed APK
-      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-      uses: actions/upload-artifact@v4
-      with:
-        name: signed-apk
-        path: bin/Pomodoro-Final-Signed.apk
-        retention-days: 7
+      - name: Fix FreeType Linker Issue
+        # ایجاد لینک دستی که قبلاً مشکل داشتیم
+        run: |
+          sudo ln -s /usr/include/freetype2/ft2build.h /usr/include/
+
+      - name: Install Buildozer & Cython
+        run: |
+          pip install --upgrade pip
+          pip install buildozer cython==0.29.33
+
+      - name: Build APK
+        env:
+          # جلوگیری از خطاهای شبکه در جاوا
+          _JAVA_OPTIONS: "-Djava.net.preferIPv4Stack=true"
+        run: |
+          # پاکسازی بیلد‌های قبلی برای اطمینان
+          buildozer android clean
+          # دستور yes برای تایید خودکار لایسنس‌ها اگر پرسیده شود
+          yes | buildozer android release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: pomopulse-release
+          path: bin/*.apk
