@@ -25,7 +25,8 @@ source.exclude_dirs = tests, bin, venv, __pycache__
 version = 1.1
 
 # (list) Application requirements
-requirements = python3,kivy==2.2.1,kivymd==1.1.1,pillow==9.5.0,plyer,pyjnius
+requirements = python3==3.11.5,kivy==2.2.1,kivymd==1.1.1,pillow==9.5.0,plyer,pyjnius,freetype,cython==0.29.36
+
 android.p4a_branch = develop
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
@@ -91,14 +92,23 @@ android.permissions = INTERNET,VIBRATE,WAKE_LOCK
 # (int) Target Android API, should be as high as possible.
 android.api = 33
 
-# (int) Minimum API your APK / AAB will support.
-android.minapi = 24
+# (int) Minimum SDK your APK will support.
+android.minapi = 21
 
 # (int) Android SDK version to use
-#android.sdk = 20
+android.sdk = 33
 
 # (str) Android NDK version to use
 android.ndk = 25b
+
+# (bool) Enable AndroidX support.
+android.enable_androidx = True
+
+# (list) Gradle dependencies to add
+android.gradle_dependencies = 'androidx.core:core-ktx:1.10.1', 'com.google.android.material:material:1.9.0'
+
+# (str) The format used to package the app for release mode (apk or aab).
+android.release_artifact = apk
 
 # (optional) Android build-tools version to use
 android.build_tools = 30.0.3
@@ -274,9 +284,8 @@ android.wakelock = True
 # (bool) Copy library instead of making a libpymodules.so
 #android.copy_libs = 1
 
-# (list) The Android archs to build for, choices: armeabi-v7a, arm64-v8a, x86, x86_64
-# In past, was `android.arch` as we weren't supporting builds for multiple archs at the same time.
-android.arch = arm64-v8a
+# (list) The Android archs to build for, valid: armeabi-v7a, arm64-v8a, x86, x86_64
+android.archs = arm64-v8a
 
 # (int) overrides automatic versionCode computation (used in build.gradle)
 # this is not the same as app version and should only be edited if you know what you're doing
@@ -397,6 +406,9 @@ ios.codesign.allowed = false
 # (int) Log level (0 = error only, 1 = info, 2 = debug (with command output))
 log_level = 2
 
+# (list) Custom pre-build commands
+android.pre_build_cmds = ranlib {{dist_dir}}/lib/libfreetype.a
+
 # (int) Display warning if buildozer is run as root (0 = False, 1 = True)
 warn_on_root = 1
 
@@ -451,6 +463,7 @@ android.release.keystore = my-key.keystore
 android.release.keyalias = my-alias
 android.release.keystore_password = 123456
 android.release.keyalias_password = 123456
+
 
 
 
