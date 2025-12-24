@@ -1,4 +1,4 @@
-name: Build Android APK (Fixed)
+name: Build Android APK (Final Fix)
 
 on:
   push:
@@ -24,10 +24,14 @@ jobs:
         with:
           python-version: '3.10'
 
+      # تغییر مهم ۱: نصب ant از طریق مخازن سیستم و حذف دانلود دستی
       - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev ant
+          sudo apt-get install -y \
+            git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config \
+            zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev \
+            libssl-dev ant build-essential libltdl-dev
 
       - name: Fix FreeType Linker Issue
         run: |
@@ -41,14 +45,7 @@ jobs:
           pip install --upgrade pip
           pip install buildozer cython==0.29.33
 
-      - name: Manual Ant Download (Fix Network Error)
-        run: |
-          # Manually download Ant to prevent Python socket error in Buildozer
-          mkdir -p ~/.buildozer/android/platform
-          cd ~/.buildozer/android/platform
-          wget https://archive.apache.org/dist/ant/binaries/apache-ant-1.9.4-bin.tar.gz
-          tar -xvzf apache-ant-1.9.4-bin.tar.gz
-          rm apache-ant-1.9.4-bin.tar.gz
+      # تغییر مهم ۲: مرحله "Manual Ant Download" کامل حذف شد چون باعث ارور شبکه بود.
 
       - name: Build APK
         env:
