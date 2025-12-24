@@ -1,4 +1,4 @@
-name: Build Android APK (Manual Setup)
+name: Build Android APK (Fixed)
 
 on:
   push:
@@ -25,18 +25,22 @@ jobs:
           python-version: '3.10'
 
       - name: Install System Dependencies
-        # نصب دستی کتابخانه‌های مورد نیاز برای کامپایل
         run: |
           sudo apt-get update
+          # Fix specific dependency conflict
+          sudo apt-get install -y libunwind-dev
+          # Install main dependencies
           sudo apt-get install -y build-essential libssl-dev libffi-dev \
           python3-dev git ffmpeg libsdl2-dev libgstreamer1.0-dev \
           libgstreamer-plugins-base1.0-dev libfreetype6-dev autoconf libtool \
           openjdk-17-jdk unzip zlib1g-dev
 
       - name: Fix FreeType Linker Issue
-        # ایجاد لینک دستی که قبلاً مشکل داشتیم
         run: |
-          sudo ln -s /usr/include/freetype2/ft2build.h /usr/include/
+          # Create symlink to fix ft2build.h error
+          if [ -d "/usr/include/freetype2" ]; then
+            sudo ln -s /usr/include/freetype2/ft2build.h /usr/include/
+          fi
 
       - name: Install Buildozer & Cython
         run: |
@@ -45,12 +49,9 @@ jobs:
 
       - name: Build APK
         env:
-          # جلوگیری از خطاهای شبکه در جاوا
           _JAVA_OPTIONS: "-Djava.net.preferIPv4Stack=true"
         run: |
-          # پاکسازی بیلد‌های قبلی برای اطمینان
           buildozer android clean
-          # دستور yes برای تایید خودکار لایسنس‌ها اگر پرسیده شود
           yes | buildozer android release
 
       - name: Upload APK
