@@ -22,7 +22,7 @@ android.sdk = 33
 android.ndk = 25b
 android.accept_sdk_license = True
 android.enable_androidx = True
-android.gradle_dependencies = com.google.android.material:material:1.9.0,androidx.core:core-ktx:1.10.1
+android.gradle_dependencies = com.google.android.material:material:1.6.0
 android.enable_jetifier = True
 android.archs = arm64-v8a
 android.allow_backup = True
@@ -40,3 +40,4 @@ warn_on_root = 1
 
 # دستور حیاتی برای رفع خطای Linker
 android.pre_build_cmds = ranlib {{dist_dir}}/lib/libfreetype.a
+
