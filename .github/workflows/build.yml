@@ -51,8 +51,9 @@ jobs:
         env:
           _JAVA_OPTIONS: "-Djava.net.preferIPv4Stack=true"
         run: |
-          buildozer android clean
+          # دستور clean حذف شد چون در سرور خام (Fresh) باعث ارور می‌شود
           yes | buildozer android release
+
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
