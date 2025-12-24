@@ -25,6 +25,7 @@ jobs:
       with:
         python-version: '3.10'
 
+    # اضافه شدن gettext و gperf برای حل مشکلات کامپایل احتمالی
     - name: Install System Dependencies
       run: |
         sudo apt-get update
@@ -36,10 +37,7 @@ jobs:
           libffi-dev libssl-dev libncurses5-dev libsqlite3-dev \
           libreadline-dev libbz2-dev liblzma-dev tk-dev \
           autoconf automake libtool pkg-config cmake zip unzip \
-          libjpeg-dev libfreetype6-dev liblcms2-dev libwebp-dev libtiff-dev \
-          python3-dev libpython3.10-dev \
-          libopenblas-dev libatlas-base-dev \
-          wget curl
+          libjpeg-dev libfreetype6-dev liblcms2-dev libwebp-dev libtiff-dev
 
     - name: Configure Buildozer and Dependencies
       run: |
@@ -53,12 +51,12 @@ jobs:
           sed -i 's/android.api = .*/android.api = 33/g' buildozer.spec
         fi
 
-        # --- تغییر مهم: Pillow به نسخه 9.5.0 محدود شد تا خطا ندهد ---
+        # --- تغییر مهم: استفاده از نسخه‌های پایدار Kivy 2.2.1 و KivyMD 1.1.1 و Pillow 9.5.0 ---
         sed -i 's/^requirements =.*/requirements = python3,kivy==2.2.1,kivymd==1.1.1,pillow==9.5.0,plyer,pyjnius/g' buildozer.spec
 
         # اطمینان از پذیرش لایسنس
         sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
-       
+        
     - name: Build Stable & Sign Manually
       env:
         ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
@@ -72,7 +70,7 @@ jobs:
         echo "Found Alias: $DETECTED_ALIAS"
 
         rm -rf .buildozer
-        buildozer -v android debug
+        yes | buildozer -v android debug
 
         echo "--- Locating Signing Tools ---"
         SDK_ROOT=~/.buildozer/android/platform/android-sdk
@@ -85,6 +83,7 @@ jobs:
         $APKSIGNER sign --ks keystore.jks --ks-pass pass:"$MY_PASS" --ks-key-alias "$DETECTED_ALIAS" --out release-signed.apk release-aligned.apk
         $APKSIGNER verify release-signed.apk
         
+        # تغییر نام نهایی
         mv release-signed.apk bin/Pomodoro-Final-Signed.apk
 
     # --- قسمت جدید که باید اضافه شود ---
