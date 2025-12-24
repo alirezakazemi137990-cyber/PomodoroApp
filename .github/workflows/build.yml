@@ -1,4 +1,4 @@
-name: Build Android APK
+تو اینترنت بگرد ببین بقیه name: Build Android APK
 
 on:
   push:
@@ -55,12 +55,13 @@ jobs:
           sed -i 's/android.api = .*/android.api = 33/g' buildozer.spec
         fi
 
-        # --- تغییر مهم: استفاده از نسخه‌های پایدار Kivy 2.2.1 و KivyMD 1.1.1 و Pillow 9.5.0 ---
-        sed -i 's/^requirements =.*/requirements = python3,kivy==2.2.1,kivymd==1.1.1,pillow==9.5.0,plyer,pyjnius/g' buildozer.spec
+        # --- تغییر مهم: اضافه کردن freetype به لیست برای رفع خطای لینکر ---
+        # این کار باعث می‌شود بیلدوزر نسخه اندرویدی freetype را بسازد
+        sed -i 's/^requirements =.*/requirements = python3,kivy==2.2.1,kivymd==1.1.1,pillow==9.5.0,plyer,pyjnius,freetype/g' buildozer.spec
 
         # اطمینان از پذیرش لایسنس
         sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
-        
+
     - name: Build Stable & Sign Manually
       env:
         ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
