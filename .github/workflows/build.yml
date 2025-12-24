@@ -45,11 +45,11 @@ jobs:
         env:
           _JAVA_OPTIONS: "-Djava.net.preferIPv4Stack=true"
         run: |
-          # Added -v for verbose logging to catch the real error
-          yes | buildozer -v android release
+          # Changed to debug to get a signed APK automatically
+          yes | buildozer -v android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: pomopulse debug
+          name: pomopulse-debug
           path: bin/*.apk
