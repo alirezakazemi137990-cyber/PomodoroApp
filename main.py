@@ -655,7 +655,7 @@ class HomeScreen(MDScreen):
     current_sound = None
     is_sound_playing = False
     is_playing_sound = BooleanProperty(False)
-    level_title = StringProperty("")
+    level_text = StringProperty("Level 1: The Starter") 
     level_progress = NumericProperty(0)
     show_quote = BooleanProperty(False)
     current_task = StringProperty("")
@@ -969,7 +969,10 @@ class HomeScreen(MDScreen):
         level_info = app.config_engine.get_user_level()
         if level_info:
             level_num, title, _, _, progress, _ = level_info
-            self.level_title = f"Level {level_num}: {title}"
+            
+            # --- اصلاح شده: استفاده از self.level_text ---
+            self.level_text = f"Level {level_num} • {title}"
+            
             self.level_progress = progress * 100  # برای نوار پیشرفت (۰ تا ۱۰۰)
 
     def update_clock(self, dt):
@@ -1289,4 +1292,5 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
+
 
