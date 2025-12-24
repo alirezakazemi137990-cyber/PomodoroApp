@@ -1,102 +1,63 @@
-تو اینترنت بگرد ببین بقیه name: Build Android APK
+name: Build Android APK
 
 on:
   push:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch: # Allows manual triggering
 
 jobs:
   build:
     runs-on: ubuntu-22.04
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v3
+    - name: Build with Buildozer
+      uses: arturoherrero/buildozer-action@v1
       with:
-        java-version: '17'
-        distribution: 'temurin'
-
-    - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
-
-    - name: Install System Dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          build-essential git ffmpeg gettext gperf \
-          libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
-          libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev \
-          zlib1g-dev libltdl-dev \
-          libffi-dev libssl-dev libncurses5-dev libsqlite3-dev \
-          libreadline-dev libbz2-dev liblzma-dev tk-dev \
-          autoconf automake libtool pkg-config cmake zip unzip \
-          libjpeg-dev libfreetype6-dev liblcms2-dev libwebp-dev libtiff-dev
-
-        # --- اصلاح حیاتی: ایجاد لینک دستی برای رفع خطای ft2build.h ---
-        # فقط یک بار اجرا شود
-        sudo ln -s /usr/include/freetype2/ft2build.h /usr/include/
-        sudo ln -s /usr/include/freetype2/freetype /usr/include/
-
-    - name: Configure Buildozer and Dependencies
-      run: |
-        pip install --upgrade pip
-        # نصب نسخه خاص Cython که برای Kivy 2.2.1 الزامی است
-        pip install buildozer "Cython==0.29.36"
-
-        # تنظیم API روی 33
-        sed -i 's/android.api = 34/android.api = 33/g' buildozer.spec
-        if ! grep -q "android.api = 33" buildozer.spec; then
-          sed -i 's/android.api = .*/android.api = 33/g' buildozer.spec
-        fi
-
-        # --- تغییر مهم: اضافه کردن freetype به لیست برای رفع خطای لینکر ---
-        # این کار باعث می‌شود بیلدوزر نسخه اندرویدی freetype را بسازد
-        sed -i 's/^requirements =.*/requirements = python3,kivy==2.2.1,kivymd==1.1.1,pillow==9.5.0,plyer,pyjnius,freetype/g' buildozer.spec
-
-        # اطمینان از پذیرش لایسنس
-        sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
-
-    - name: Build Stable & Sign Manually
+        workdir: '.' # Set if your app is in a subdirectory
+        buildozer_version: 'stable'
+        args: 'android debug'
       env:
-        ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
-      run: |
-        set -e
-        echo "$ANDROID_KEYSTORE_B64" | base64 --decode > keystore.jks
-        MY_PASS="123456"
-        
-        echo "--- Detecting Alias ---"
-        DETECTED_ALIAS=$(keytool -list -v -keystore keystore.jks -storepass "$MY_PASS" | grep "Alias name:" | head -n 1 | sed 's/Alias name: //g' | xargs)
-        
-        rm -rf .buildozer
-        
-        # اجرای مستقیم بدون yes و بدون CFLAGS (چون لینک‌ها را در مرحله قبل ساختیم)
-        buildozer -v android debug
+        # Critical: Accept SDK licenses to avoid interactive prompts
+        ACCEPT_LICENSES: 'yes'
+        # Optional: Set Buildozer cache for faster builds
+        BUILDOZER_BUILD_DIR: '/tmp/buildozer'
 
-        echo "--- Locating Signing Tools ---"
-        SDK_ROOT=~/.buildozer/android/platform/android-sdk
-        ZIPALIGN=$(find $SDK_ROOT -name zipalign | sort -r | head -n 1)
-        APKSIGNER=$(find $SDK_ROOT -name apksigner | sort -r | head -n 1)
-        
-        INPUT_APK=$(find bin -name "*-debug.apk" | head -n 1)
-        
-        # چک کردن اینکه APK ساخته شده یا نه
-        if [ -z "$INPUT_APK" ]; then
-          echo "Error: No APK found in bin/ directory!"
+    - name: List APK files (Debug)
+      run: |
+        find . -name "*.apk" -type f | head -20
+
+    - name: Sign APK (Release)
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+      run: |
+        # Setup Java and keytool
+        sudo apt-get update && sudo apt-get install -y openjdk-11-jdk-headless
+        # Decode the keystore from GitHub Secrets
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > keystore.jks
+        # Locate the built APK (adjust path if needed)
+        APK_PATH=$(find . -name "*debug*.apk" -type f | head -1)
+        if [ -z "$APK_PATH" ]; then
+          echo "Error: No debug APK found!"
           exit 1
         fi
+        # Align and sign the APK
+        ${ANDROID_HOME}/build-tools/33.0.0/zipalign -v -p 4 "$APK_PATH" app-unsigned-aligned.apk
+        ${ANDROID_HOME}/build-tools/33.0.0/apksigner sign \
+          --ks keystore.jks \
+          --ks-pass pass:"${{ secrets.KEYSTORE_PASSWORD }}" \
+          --key-pass pass:"${{ secrets.KEY_PASSWORD }}" \
+          --out bin/Pomodoro-Final-Signed.apk \
+          app-unsigned-aligned.apk
+        echo "Signed APK created: bin/Pomodoro-Final-Signed.apk"
 
-        $ZIPALIGN -v -p 4 "$INPUT_APK" release-aligned.apk
-        $APKSIGNER sign --ks keystore.jks --ks-pass pass:"$MY_PASS" --ks-key-alias "$DETECTED_ALIAS" --out release-signed.apk release-aligned.apk
-        mv release-signed.apk bin/Pomodoro-Final-Signed.apk
-
-    - name: Upload Final Artifact
+    - name: Upload Signed APK
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
       uses: actions/upload-artifact@v4
       with:
-        name: Signed-APK
+        name: signed-apk
         path: bin/Pomodoro-Final-Signed.apk
+        retention-days: 7
