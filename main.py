@@ -392,8 +392,8 @@ KV = '''
 class GamificationEngine:
     """موتور محاسبه XP و سطح کاربر بر اساس تاریخچه پومودورو"""
     def __init__(self, history_file):
-        super().__init__(**kwargs)
-        self._clock_event = None    
+        # حذف خطای کشنده: super().__init__(**kwargs)
+        # حذف متغیر غیرضروری: self._clock_event
         self.history_file = history_file
         self.levels = [
             (0,     300,  "The Starter"),
@@ -403,6 +403,7 @@ class GamificationEngine:
             (6000,  None, "The Legend")
         ]
 
+    # بقیه متدها (get_total_xp و غیره) بدون تغییر باقی می‌مانند...
     def get_total_xp(self):
         """مجموع دقیقه‌های کار (XP) از تاریخچه را برمی‌گرداند"""
         total = 0
@@ -736,7 +737,12 @@ class HomeScreen(MDScreen):
             items=sound_items,
             width_mult=2,
         )
-
+        
+    def on_leave(self):
+        """لغو قطعی رویداد Clock هنگام خروج از صفحه (جلوگیری از Memory Leak)"""
+        if self.clock_event is not None:
+            self.clock_event.cancel()
+            self.clock_event = None
     def start_background_loading(self, dt):
         """این تابع ۱ ثانیه بعد از لود شدن برنامه اجرا می‌شود"""
         threading.Thread(target=self.preload_sounds_background, daemon=True).start()
@@ -1123,11 +1129,6 @@ class SettingsScreen(MDScreen):
             app.switch_screen("home")
         except ValueError:
             pass
-    def on_leave(self, *args):
-    """لغو event Clock هنگام خروج از صفحه"""
-    if self._clock_event:
-        self._clock_event.cancel()
-        self._clock_event = None
         
 class StatsScreen(MDScreen):
     colors = [
@@ -1299,6 +1300,7 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
+
 
 
 
