@@ -44,3 +44,4 @@ warn_on_root = 1
 # دستور حیاتی برای رفع خطای Linker
 android.pre_build_cmds = ranlib {{dist_dir}}/lib/libfreetype.a
 
+
