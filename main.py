@@ -24,6 +24,7 @@ from kivymd.uix.textfield import MDTextField
 from kivy.core.audio import SoundLoader
 from kivy.clock import Clock
 from kivymd.uix.menu import MDDropdownMenu
+import time
 # --- وارد کردن کتابخانه‌های صدا ---
 try:
     import winsound
@@ -761,6 +762,8 @@ class HomeScreen(MDScreen):
         self.time_left = 1500  # پیش‌فرض 25 دقیقه
         self.total_time_session = 1500
         self.end_time = None
+        self._notification_cooldown = 2  # ثانیه
+        self._last_notification_time = 0
 
         # 2. متغیرهای صدا
         self.sound = None
@@ -1117,54 +1120,21 @@ class HomeScreen(MDScreen):
         if not is_early:
             self.progress_value = 100
 
-        # --- آلارم و نوتیفیکیشن ---
-        try:
-            message = "Time for a break!" if self.is_work_time else "Back to work!"
-            notification.notify(title="PomoPulse", message=message, timeout=5)
-            # ویبره فقط برای اندروید
-            if platform == 'android':
-                try:
-                    from plyer import vibrator
-                    vibrator.vibrate(0.5)
-                except: pass
-        except Exception:
-            pass
-
-        app = MDApp.get_running_app()
-        task_name = self.ids.task_input.text.strip() or "General"
-        
-        if self.is_work_time and not is_early:
-            session_type = "Work"
-            duration_to_log = manual_duration if manual_duration is not None else int(app.config_engine.work_min)
-            app.config_engine.log_session(session_type, duration_to_log, task_name)
-            self.cycles_completed += 1
-
-        if self.is_work_time: 
-            self.is_work_time = False
-            if self.cycles_completed >= app.config_engine.cycles_limit:
-                self.status_text = "Long Break! 🎉"
-                self.time_left = int(app.config_engine.long_break_min) * 60
-                self.cycles_completed = 0
-            else:
-                self.status_text = "Short Break ☕"
-                self.time_left = int(app.config_engine.short_break_min) * 60
-            self.show_quote = False            
-        else: 
-            self.is_work_time = True
-            self.status_text = "Back to Work! 🚀"
-            self.show_quote = False
-            if not hasattr(self, 'quotes'):
-                self.quotes = ["Focus.", "Keep going."]
-            self.quote_text = random.choice(self.quotes)
-            self.time_left = int(app.config_engine.work_min) * 60
-            
-        self.total_time_session = self.time_left
-        self.update_display_time()
-        self.progress_value = 0 
-        
-        self.cycle_text = f"Cycle: {self.cycles_completed}/{app.config_engine.cycles_limit}"
-        self.update_level_display()
-
+        # --- آلارم و نوتیفیکیشن با cooldown ---
+        current_time = time.time()
+        if current_time - self._last_notification_time >= self._notification_cooldown:
+            try:
+                message = "Time for a break!" if self.is_work_time else "Back to work!"
+                notification.notify(title="PomoPulse", message=message, timeout=5)
+                # ویبره فقط برای اندروید
+                if platform == 'android':
+                    try:
+                        from plyer import vibrator
+                        vibrator.vibrate(0.5)
+                    except: pass
+                self._last_notification_time = current_time
+            except Exception:
+                pass
     # این متد باید حتماً داخل کلاس باشد (با یک Tab فاصله)
     def play_alarm(self):
         """پخش صدای آلارم هنگام اتمام سشن"""
@@ -1378,27 +1348,3 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
