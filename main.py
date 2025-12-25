@@ -45,133 +45,225 @@ KV = '''
     name: "home"
     MDBoxLayout:
         orientation: 'vertical'
-        padding: [dp(20), dp(40), dp(20), dp(20)]
-        spacing: dp(15)
+        padding: [dp(20), dp(60), dp(20), dp(20)]
+        spacing: dp(20)
+        md_bg_color: 0.05, 0.05, 0.05, 1  # پس‌زمینه تیره مخصوص حالت گیمینگ
 
-        # --- 1. Hero Card (Gamification Profile) ---
+        # --- 1. بخش نقل قول (The Quest Text) ---
         MDCard:
+            orientation: "vertical"
             size_hint_y: None
-            height: dp(75)
-            radius: [25,]
-            padding: dp(15)
+            height: dp(50)
+            radius: [15]
             md_bg_color: 0.15, 0.15, 0.15, 1
             elevation: 2
-
-            MDIcon:
-                icon: "trophy"
-                pos_hint: {"center_y": .5}
+            padding: dp(10)
+            
+            MDLabel:
+                text: root.quote_text
+                font_style: "Caption"
                 theme_text_color: "Custom"
-                text_color: 1, 0.75, 0, 1  # Gold Color
-                font_size: "36sp"
+                text_color: 0.8, 0.8, 0.8, 1
+                halign: "center"
+                valign: "center"
+                italic: True
 
-            MDBoxLayout:
-                orientation: 'vertical'
-                padding: [dp(15), 0, 0, 0]
-                pos_hint: {"center_y": .5}
-
-                MDLabel:
-                    text: root.user_title_text
-                    font_style: "H6"
-                    bold: True
-                    theme_text_color: "Custom"
-                    text_color: 1, 1, 1, 1
-
-                MDLabel:
-                    text: root.level_text
-                    font_style: "Caption"
-                    theme_text_color: "Custom"
-                    text_color: 0.6, 0.6, 0.6, 1
-
-        # --- 2. Task Input (Minimalist) ---
-        MDTextField:
-            id: task_input
-            hint_text: "What is your mission?"
-            mode: "line"
-            line_color_focus: app.theme_cls.primary_color
-            text_color_focus: 1, 1, 1, 1
-            font_size: "18sp"
-            halign: "center"
-
-        # --- Spacer to push timer to center ---
-        Widget:
-            size_hint_y: 1
-
-        # --- 3. Giant Timer (Center Piece) ---
-        MDLabel:
-            text: root.timer_text
-            font_size: "110sp"  # سایز بسیار بزرگ
-            halign: "center"
-            valign: "center"
-            bold: True
-            theme_text_color: "Custom"
-            text_color: app.theme_cls.primary_color if root.is_work_time else (0, 0.9, 0.4, 1)
-
-        MDLabel:
-            text: root.status_text
-            halign: "center"
-            theme_text_color: "Hint"
-            font_style: "Body1"
-
-        # --- Spacer ---
-        Widget:
-            size_hint_y: 1
-
-        # --- 4. Controls ---
+        # --- 2. تایمر بزرگ (The Focus Core) ---
         MDBoxLayout:
-            adaptive_height: True
-            spacing: dp(15)
+            orientation: 'vertical'
+            spacing: dp(10)
+            size_hint_y: None
+            height: dp(200)
             pos_hint: {"center_x": .5}
-            padding: [0, 0, 0, dp(30)]
 
-            MDIconButton:
-                icon: "restore"
-                icon_size: "32sp"
+            # تایمر غول‌پیکر
+            MDLabel:
+                text: root.timer_text
+                font_style: "H1"
+                font_size: "90sp"
+                halign: "center"
+                theme_text_color: "Custom"
+                text_color: app.theme_cls.primary_color if root.is_work_time else (0, 0.9, 0.4, 1)
+                bold: True
+
+            # وضعیت فعلی (زیر تایمر)
+            MDLabel:
+                text: root.status_text.upper()
+                halign: "center"
                 theme_text_color: "Custom"
                 text_color: 0.5, 0.5, 0.5, 1
-                on_release: root.reset_state()
+                font_style: "Button"
+                letter_spacing: dp(2)
 
-            # --- دکمه صدا (اضافه شد تا از کرش جلوگیری شود) ---
-            MDIconButton:
-                id: btn_sound
-                icon: "music-note-off"
-                icon_size: "32sp"
-                theme_text_color: "Custom"
-                text_color: 0.5, 0.5, 0.5, 1
-                on_release: root.open_sound_menu()
-
-            MDFloatingActionButton:
-                icon: "play" if not root.timer_running else "pause"
-                type: "large"
-                md_bg_color: app.theme_cls.primary_color if not root.timer_running else (1, 0.7, 0, 1)
-                on_release: root.toggle_timer()
-
-            MDIconButton:
-                icon: "skip-next"
-                icon_size: "32sp"
-                theme_text_color: "Custom"
-                text_color: 0.5, 0.5, 0.5, 1
-                on_release: root.finish_early()
-
-        # --- 5. Bottom Nav (Minimal) ---
+        # --- 3. ورودی تسک (The Mission Box) ---
         MDBoxLayout:
             adaptive_height: True
             spacing: dp(10)
+            padding: [dp(20), 0]
             
+            MDCard:
+                size_hint_y: None
+                height: dp(50)
+                radius: [25]
+                md_bg_color: 0.12, 0.12, 0.12, 1
+                padding: [dp(15), 0, dp(5), 0]
+                line_color: (0.3, 0.3, 0.3, 1)
+                
+                MDTextField:
+                    id: task_input
+                    hint_text: "Enter your quest..."
+                    mode: "line"
+                    font_size: "16sp"
+                    size_hint_x: 0.85
+                    pos_hint: {"center_y": .5}
+                    text_color_normal: 1, 1, 1, 1
+                    text_color_focus: 1, 1, 1, 1
+                    hint_text_color_normal: 0.5, 0.5, 0.5, 1
+
+                MDIconButton:
+                    icon: "tag-outline"
+                    theme_text_color: "Custom"
+                    text_color: app.theme_cls.primary_color
+                    on_release: root.open_tag_menu()
+                    pos_hint: {"center_y": .5}
+
+        # فضای پرکننده (Spacer)
+        Widget:
+
+        # --- 4. کارت وضعیت قهرمان (Hero Stat Card) ---
+        MDCard:
+            size_hint_y: None
+            height: dp(90)
+            radius: [20]
+            md_bg_color: 0.1, 0.12, 0.15, 1
+            line_color: app.theme_cls.primary_color
+            line_width: 1.2
+            padding: dp(15)
+            spacing: dp(15)
+            elevation: 4
+
+            # آیکون سطح (Badge)
+            MDIcon:
+                icon: "shield-star"
+                font_size: "40sp"
+                theme_text_color: "Custom"
+                text_color: app.theme_cls.primary_color
+                pos_hint: {"center_y": .5}
+                size_hint_x: None
+                width: dp(50)
+
+            # اطلاعات متنی و نوار پیشرفت
+            MDBoxLayout:
+                orientation: "vertical"
+                spacing: dp(5)
+                pos_hint: {"center_y": .5}
+
+                MDBoxLayout:
+                    adaptive_height: True
+                    MDLabel:
+                        text: root.level_title
+                        font_style: "Subtitle1"
+                        bold: True
+                        theme_text_color: "Custom"
+                        text_color: 1, 1, 1, 1
+                    
+                    MDLabel:
+                        text: root.cycle_text
+                        halign: "right"
+                        font_style: "Caption"
+                        theme_text_color: "Hint"
+
+                # نوار پیشرفت XP
+                MDProgressBar:
+                    value: root.level_progress
+                    color: app.theme_cls.primary_color
+                    back_color: 0.2, 0.2, 0.2, 1
+                    size_hint_y: None
+                    height: dp(6)
+                    radius: [3]
+
+                MDLabel:
+                    text: "XP needed for next rank"
+                    font_style: "Overline"
+                    theme_text_color: "Hint"
+
+        # --- 5. کنترل‌ها (Game Controllers) ---
+        MDBoxLayout:
+            adaptive_height: True
+            spacing: dp(30)
+            pos_hint: {"center_x": .5}
+            padding: [0, dp(10), 0, 0]
+
             MDIconButton:
-                icon: "cog-outline"
-                on_release: app.switch_screen("settings")
+                icon: "refresh"
+                theme_text_color: "Custom"
+                text_color: 0.6, 0.6, 0.6, 1
+                on_release: root.reset_timer()
+
+            # دکمه اصلی (Play/Pause) بزرگ
+            MDIconButton:
+                id: btn_start
+                icon: "play-circle" if not root.timer_running else "pause-circle"
+                icon_size: "64sp"
+                theme_text_color: "Custom"
+                text_color: app.theme_cls.primary_color if not root.timer_running else (1, 0.7, 0, 1)
+                on_release: root.toggle_timer()
+
+            MDIconButton:
+                id: btn_sound
+                icon: "music-note" if not root.is_playing_sound else "music-note-off"
+                theme_text_color: "Custom"
+                text_color: 0.6, 0.6, 0.6, 1 if not root.is_playing_sound else app.theme_cls.primary_color
+                on_release: root.open_sound_menu()
             
-            Widget: # Spacer
-            
+            # دکمه اتمام سریع (مخفی برای زیبایی اما فعال)
+            MDIconButton:
+                icon: "skip-next"
+                disabled: not root.timer_running
+                theme_text_color: "Custom"
+                text_color: 0.4, 0.4, 0.4, 1
+                on_release: root.finish_early()
+
+        # --- 6. نوار پایین (Bottom Navigation Bar) ---
+        MDBoxLayout:
+            adaptive_height: True
+            spacing: 0
+            padding: [dp(20), dp(10), dp(20), dp(10)]
+            size_hint_y: None
+            height: dp(60)
+
+            # فضای خالی برای هل دادن آیکون آمار به چپ
+            Widget:
+                size_hint_x: 1
+
             MDIconButton:
                 icon: "chart-bar"
+                theme_text_color: "Custom"
+                text_color: 0.4, 0.4, 0.4, 1
                 on_release: app.switch_screen("stats")
-            
-            Widget: # Spacer
-            
+
+            Widget:
+                size_hint_x: 2
+
             MDIconButton:
-                icon: "account-circle-outline"
+                icon: "account"
+                theme_text_color: "Custom"
+                text_color: 0.4, 0.4, 0.4, 1
                 on_release: app.switch_screen("profile")
+
+            # فضای خالی برای فاصله‌گذاری
+            Widget:
+                size_hint_x: 2
+
+            MDIconButton:
+                icon: "cog"
+                theme_text_color: "Custom"
+                text_color: 0.4, 0.4, 0.4, 1
+                on_release: app.switch_screen("settings")
+
+            # فضای خالی برای هل دادن آیکون تنظیمات به راست
+            Widget:
+                size_hint_x: 1
 
 <SettingsScreen>:
     name: "settings"
@@ -392,8 +484,6 @@ KV = '''
 class GamificationEngine:
     """موتور محاسبه XP و سطح کاربر بر اساس تاریخچه پومودورو"""
     def __init__(self, history_file):
-        # حذف خطای کشنده: super().__init__(**kwargs)
-        # حذف متغیر غیرضروری: self._clock_event
         self.history_file = history_file
         self.levels = [
             (0,     300,  "The Starter"),
@@ -403,7 +493,6 @@ class GamificationEngine:
             (6000,  None, "The Legend")
         ]
 
-    # بقیه متدها (get_total_xp و غیره) بدون تغییر باقی می‌مانند...
     def get_total_xp(self):
         """مجموع دقیقه‌های کار (XP) از تاریخچه را برمی‌گرداند"""
         total = 0
@@ -658,11 +747,9 @@ class HomeScreen(MDScreen):
     current_sound = None
     is_sound_playing = False
     is_playing_sound = BooleanProperty(False)
-    level_text = StringProperty("Level 1: The Starter") 
+    level_title = StringProperty("")
     level_progress = NumericProperty(0)
-    show_quote = BooleanProperty(False)
-    current_task = StringProperty("")
-    
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # 1. متغیرهای تایمر
@@ -677,6 +764,7 @@ class HomeScreen(MDScreen):
         # 2. متغیرهای صدا
         self.sound = None
         self.current_sound = None
+        self.is_playing_sound = False
         self.sound_cache = {} 
         self.sound_file_map = {
             "Rain": "assets/sounds/rain.mp3",
@@ -699,7 +787,6 @@ class HomeScreen(MDScreen):
         Clock.schedule_once(self.start_background_loading, 1)
 
     def on_enter(self):
-        super().on_enter()  # فراخوانی متد پایه برای جلوگیری از AttributeError
         app = MDApp.get_running_app()
         self.greeting_text = f"Hi, {app.config_engine.user_name}"
         self.user_title_text = app.config_engine.user_title
@@ -718,10 +805,10 @@ class HomeScreen(MDScreen):
                 "Don't watch the clock; do what it does. Keep going.",
                 "Success is the sum of small efforts, repeated day in and day out."
             ]
-        # فقط در صورت خالی بودن quote_text، یک نقل‌قول جدید انتخاب کن
         if not self.quote_text:
             self.quote_text = random.choice(self.quotes)
 
+            
         self.cycle_text = f"Cycle: {self.cycles_completed}/{app.config_engine.cycles_limit}"
         self.update_level_display()
         
@@ -737,12 +824,6 @@ class HomeScreen(MDScreen):
             items=sound_items,
             width_mult=2,
         )
-        
-    def on_leave(self):
-        """لغو قطعی رویداد Clock هنگام خروج از صفحه (جلوگیری از Memory Leak)"""
-        if self.clock_event is not None:
-            self.clock_event.cancel()
-            self.clock_event = None
     def start_background_loading(self, dt):
         """این تابع ۱ ثانیه بعد از لود شدن برنامه اجرا می‌شود"""
         threading.Thread(target=self.preload_sounds_background, daemon=True).start()
@@ -816,7 +897,7 @@ class HomeScreen(MDScreen):
         self.timer_running = False
         self.is_work_time = True
         self.cycles_completed = 0
-        self.show_quote = False       
+
         # استفاده از app.config_engine به جای self.cfg
         self.time_left = int(app.config_engine.work_min) * 60
         self.total_time_session = self.time_left
@@ -882,55 +963,20 @@ class HomeScreen(MDScreen):
                     self.ids.btn_sound.icon = "music-note"
                     self.ids.btn_sound.md_bg_color = (0.2, 0.6, 1, 0.2) # هایلایت آبی
                     self.is_sound_playing = True
-                else:
-                    pass 
-                    
+            else:
+                print(f"Sound file missing: {sound_path}")
     def pause_timer(self):
         self.timer_running = False
         self.status_text = "Paused"
-        self.show_quote = False       
+        # لغو ایونت ساعت برای جلوگیری از آپدیت شدن زمان
         if getattr(self, "clock_event", None):
             self.clock_event.cancel()
-
-    def toggle_timer(self):
-        raw_task = self.ids.task_input.text.strip()
-        if not raw_task:
-            self.ids.task_input.error = True
-            return
-        self.ids.task_input.error = False
-
-        if not self.timer_running:
-            if raw_task and raw_task not in self.saved_tasks:
-                self.saved_tasks.append(raw_task)
-
-            self.timer_running = True
-            self.status_text = "Focusing..." if self.is_work_time else "Recharging..."
-            self.show_quote = True 
-            # خط پاک کننده متن حذف شد
-            self.quote_text = random.choice(self.quotes)            
-            
-            if self.is_work_time:
-                self.play_sound()
-
-            if getattr(self, "clock_event", None):
-                try: self.clock_event.cancel()
-                except: pass
-                self.clock_event = None
-
-            self.end_time = datetime.now() + timedelta(seconds=self.time_left)
-            self.clock_event = Clock.schedule_interval(self.update_clock, 0.5)
-        else:
-            self.pause_timer()
-            self.stop_sound()
                 
     def reset_timer(self):
         app = MDApp.get_running_app() # مهم
         
         self.timer_running = False
         self.end_time = None
-        self.show_quote = False               
-        self.status_text = "Ready to Focus?"  
-        self.current_task = ""
         if getattr(self, "clock_event", None):
             try: self.clock_event.cancel()
             except: pass
@@ -977,12 +1023,43 @@ class HomeScreen(MDScreen):
         level_info = app.config_engine.get_user_level()
         if level_info:
             level_num, title, _, _, progress, _ = level_info
-            
-            # --- اصلاح شده: استفاده از self.level_text ---
-            self.level_text = f"Level {level_num} • {title}"
-            
+            self.level_title = f"Level {level_num}: {title}"
             self.level_progress = progress * 100  # برای نوار پیشرفت (۰ تا ۱۰۰)
 
+    def toggle_timer(self):
+        raw_task = self.ids.task_input.text.strip()
+        if not raw_task:
+            self.ids.task_input.error = True
+            return
+        self.ids.task_input.error = False
+
+        if not self.timer_running:
+            # --- تغییر: ذخیره تسک در لیست ---
+            if raw_task and raw_task not in self.saved_tasks:
+                self.saved_tasks.append(raw_task)
+
+            # شروع تایمر
+            self.timer_running = True
+            self.status_text = "Focusing..." if self.is_work_time else "Recharging..."
+            
+            # پخش صدا (اگر تنظیم شده باشد)
+            if self.is_work_time:
+                self.play_sound()
+
+            # مدیریت ایونت ساعت
+            if getattr(self, "clock_event", None):
+                try: self.clock_event.cancel()
+                except: pass
+                self.clock_event = None
+
+            self.end_time = datetime.now() + timedelta(seconds=self.time_left)
+            self.clock_event = Clock.schedule_interval(self.update_clock, 0.5)
+        else:
+            # توقف تایمر
+            self.pause_timer()
+            # توقف صدا
+            self.stop_sound()
+            
     def update_clock(self, dt):
         # اگر تایمر در حال اجرا نیست یا زمان پایان مشخص نیست، ایونت را متوقف کن
         if not self.timer_running or not self.end_time:
@@ -1028,10 +1105,8 @@ class HomeScreen(MDScreen):
         self.finish_session(is_early=True)
 
     def finish_session(self, manual_duration=None, is_early=False):
-        # ... (کدهای ابتدای متد بدون تغییر) ...
         self.timer_running = False
         self.end_time = None
-        self.play_alarm()   
         if getattr(self, "clock_event", None):
             self.clock_event.cancel()
             self.clock_event = None
@@ -1039,20 +1114,16 @@ class HomeScreen(MDScreen):
         if not is_early:
             self.progress_value = 100
 
-        # --- آلارم و نوتیفیکیشن ---
+        # --- آلارم ---
         try:
             message = "Time for a break!" if self.is_work_time else "Back to work!"
             notification.notify(title="PomoPulse", message=message, timeout=5)
-            # ویبره فقط برای اندروید
-            if platform == 'android':
-                try:
-                    from plyer import vibrator
-                    vibrator.vibrate(0.5)
-                except: pass
+            if platform == 'android' and hasattr(vibrator, 'vibrate'):
+                vibrator.vibrate(0.5)
         except Exception:
             pass
 
-        app = MDApp.get_running_app()
+        app = MDApp.get_running_app() # دسترسی به کانفیگ
         task_name = self.ids.task_input.text.strip() or "General"
         
         if self.is_work_time and not is_early:
@@ -1061,6 +1132,7 @@ class HomeScreen(MDScreen):
             app.config_engine.log_session(session_type, duration_to_log, task_name)
             self.cycles_completed += 1
 
+        # تغییر فاز
         if self.is_work_time: 
             self.is_work_time = False
             if self.cycles_completed >= app.config_engine.cycles_limit:
@@ -1070,13 +1142,17 @@ class HomeScreen(MDScreen):
             else:
                 self.status_text = "Short Break ☕"
                 self.time_left = int(app.config_engine.short_break_min) * 60
-            self.show_quote = False            
         else: 
             self.is_work_time = True
             self.status_text = "Back to Work! 🚀"
-            self.show_quote = False
             if not hasattr(self, 'quotes'):
-                self.quotes = ["Focus.", "Keep going."]
+                self.quotes = [
+                    "Focus on being productive instead of busy.",
+                    "The only way to do great work is to love what you do.",
+                    "It always seems impossible until it's done.",
+                    "Don't watch the clock; do what it does. Keep going.",
+                    "Success is the sum of small efforts, repeated day in and day out."
+                ]
             self.quote_text = random.choice(self.quotes)
             self.time_left = int(app.config_engine.work_min) * 60
             
@@ -1086,20 +1162,6 @@ class HomeScreen(MDScreen):
         
         self.cycle_text = f"Cycle: {self.cycles_completed}/{app.config_engine.cycles_limit}"
         self.update_level_display()
-
-    # این متد باید حتماً داخل کلاس باشد (با یک Tab فاصله)
-    def play_alarm(self):
-        """پخش صدای آلارم هنگام اتمام سشن"""
-        try:
-            alarm_path = "assets/sounds/alarm.wav"
-            if os.path.exists(alarm_path):
-                alarm_sound = SoundLoader.load(alarm_path)
-                if alarm_sound:
-                    alarm_sound.play()
-            else:
-                print(f"Alarm file not found: {alarm_path}")
-        except Exception as e:
-            print(f"Alarm play error: {e}")
 
 class SettingsScreen(MDScreen):
     def on_enter(self):
@@ -1129,7 +1191,7 @@ class SettingsScreen(MDScreen):
             app.switch_screen("home")
         except ValueError:
             pass
-        
+
 class StatsScreen(MDScreen):
     colors = [
         (0.29, 0.66, 0.95, 1), (0.96, 0.66, 0.26, 1), (0.37, 0.73, 0.54, 1),
@@ -1300,7 +1362,3 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
-
-
-
-
