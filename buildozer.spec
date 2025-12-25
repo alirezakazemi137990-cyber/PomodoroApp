@@ -12,7 +12,7 @@ version = 1.1
 icon.filename = %(source.dir)s/icon.png
 
 # تغییر مهم: نسخه پایتون را فقط python3 بگذار، p4a خودش نسخه مناسب را دانلود می‌کند
-requirements = python3,kivy==2.2.1,kivymd==1.1.1,pillow==9.5.0,plyer,pyjnius,freetype,cython==0.29.36
+requirements = python3,kivy==2.2.1,kivymd==1.1.1,pillow==9.5.0,plyer,pyjnius,cython==0.29.36
 
 orientation = portrait
 osx.python_version = 3
@@ -43,5 +43,6 @@ warn_on_root = 1
 
 # دستور حیاتی برای رفع خطای Linker
 android.pre_build_cmds = ranlib {{dist_dir}}/lib/libfreetype.a
+
 
 
