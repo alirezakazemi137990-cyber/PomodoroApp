@@ -46,11 +46,11 @@ jobs:
           pip install --upgrade pip
           pip install buildozer cython==0.29.33
 
-      # تغییر مهم ۲: مرحله "Manual Ant Download" کامل حذف شد چون باعث ارور شبکه بود.
-
       - name: Build APK
         env:
           _JAVA_OPTIONS: "-Djava.net.preferIPv4Stack=true"
+          # این خط حیاتی است: مسیر نصب شده Ant در اوبونتو را به بیلدوزر معرفی می‌کند
+          ANT_HOME: /usr/share/ant
         run: |
           # Changed to debug to get a signed APK automatically
           yes | buildozer -v android debug
