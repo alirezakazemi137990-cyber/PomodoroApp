@@ -45,20 +45,31 @@ KV = '''
     name: "home"
     MDBoxLayout:
         orientation: 'vertical'
-        padding: [dp(20), dp(60), dp(20), dp(20)]
-        spacing: dp(20)
-        md_bg_color: 0.05, 0.05, 0.05, 1  # پس‌زمینه تیره مخصوص حالت گیمینگ
+        padding: [dp(20), dp(50), dp(20), dp(10)]  # فاصله از بالا کمی بیشتر شد
+        spacing: dp(15)                             # فاصله بین المان‌ها کمی بیشتر شد
+        md_bg_color: 0.05, 0.05, 0.05, 1
 
-        # --- 1. بخش نقل قول (The Quest Text) ---
-        MDCard:
-            orientation: "vertical"
+        # کارت اول حذف شد (The Quest Text Removed)
+
+        # --- 2. تایمر بزرگ (The Focus Core) ---
+        MDBoxLayout:
+            orientation: 'vertical'
+            spacing: dp(10)
             size_hint_y: None
-            height: dp(50)
-            radius: [15]
-            md_bg_color: 0.15, 0.15, 0.15, 1
-            elevation: 2
-            padding: dp(10)
-            
+            height: dp(160)       # ارتفاع کمی بیشتر شد تا تایمر جا دارتر باشد
+            pos_hint: {"center_x": .5}
+
+            # تایمر غول‌پیکر
+            MDLabel:
+                text: root.timer_text
+                font_style: "H1"
+                font_size: "100sp"   # سایز فونت کمی بزرگتر شد (از 90 به 100)
+                halign: "center"
+                theme_text_color: "Custom"
+                text_color: app.theme_cls.primary_color if root.is_work_time else (0, 0.9, 0.4, 1)
+                bold: True
+
+            # نمایش نقل‌قول (زمانی که تایمر فعال است)
             MDLabel:
                 text: root.quote_text
                 font_style: "Caption"
@@ -67,26 +78,11 @@ KV = '''
                 halign: "center"
                 valign: "center"
                 italic: True
+                opacity: 1 if root.show_quote else 0
+                size_hint_y: None
+                height: 0 if not root.show_quote else dp(30)
 
-        # --- 2. تایمر بزرگ (The Focus Core) ---
-        MDBoxLayout:
-            orientation: 'vertical'
-            spacing: dp(10)
-            size_hint_y: None
-            height: dp(200)
-            pos_hint: {"center_x": .5}
-
-            # تایمر غول‌پیکر
-            MDLabel:
-                text: root.timer_text
-                font_style: "H1"
-                font_size: "90sp"
-                halign: "center"
-                theme_text_color: "Custom"
-                text_color: app.theme_cls.primary_color if root.is_work_time else (0, 0.9, 0.4, 1)
-                bold: True
-
-            # وضعیت فعلی (زیر تایمر)
+            # نمایش وضعیت (زمانی که تایمر غیرفعال است)
             MDLabel:
                 text: root.status_text.upper()
                 halign: "center"
@@ -94,6 +90,9 @@ KV = '''
                 text_color: 0.5, 0.5, 0.5, 1
                 font_style: "Button"
                 letter_spacing: dp(2)
+                opacity: 1 if not root.show_quote else 0
+                size_hint_y: None
+                height: 0 if root.show_quote else dp(30)
 
         # --- 3. ورودی تسک (The Mission Box) ---
         MDBoxLayout:
@@ -204,7 +203,7 @@ KV = '''
             MDIconButton:
                 id: btn_start
                 icon: "play-circle" if not root.timer_running else "pause-circle"
-                icon_size: "64sp"
+                icon_size: "48sp"
                 theme_text_color: "Custom"
                 text_color: app.theme_cls.primary_color if not root.timer_running else (1, 0.7, 0, 1)
                 on_release: root.toggle_timer()
@@ -749,7 +748,9 @@ class HomeScreen(MDScreen):
     is_playing_sound = BooleanProperty(False)
     level_title = StringProperty("")
     level_progress = NumericProperty(0)
-
+    show_quote = BooleanProperty(False)
+    current_task = StringProperty("")
+    
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # 1. متغیرهای تایمر
@@ -764,7 +765,6 @@ class HomeScreen(MDScreen):
         # 2. متغیرهای صدا
         self.sound = None
         self.current_sound = None
-        self.is_playing_sound = False
         self.sound_cache = {} 
         self.sound_file_map = {
             "Rain": "assets/sounds/rain.mp3",
@@ -897,7 +897,7 @@ class HomeScreen(MDScreen):
         self.timer_running = False
         self.is_work_time = True
         self.cycles_completed = 0
-
+        self.show_quote = False       
         # استفاده از app.config_engine به جای self.cfg
         self.time_left = int(app.config_engine.work_min) * 60
         self.total_time_session = self.time_left
@@ -963,20 +963,55 @@ class HomeScreen(MDScreen):
                     self.ids.btn_sound.icon = "music-note"
                     self.ids.btn_sound.md_bg_color = (0.2, 0.6, 1, 0.2) # هایلایت آبی
                     self.is_sound_playing = True
-            else:
-                print(f"Sound file missing: {sound_path}")
+                else:
+                    pass 
+                    
     def pause_timer(self):
         self.timer_running = False
         self.status_text = "Paused"
-        # لغو ایونت ساعت برای جلوگیری از آپدیت شدن زمان
+        self.show_quote = False       
         if getattr(self, "clock_event", None):
             self.clock_event.cancel()
+
+    def toggle_timer(self):
+        raw_task = self.ids.task_input.text.strip()
+        if not raw_task:
+            self.ids.task_input.error = True
+            return
+        self.ids.task_input.error = False
+
+        if not self.timer_running:
+            if raw_task and raw_task not in self.saved_tasks:
+                self.saved_tasks.append(raw_task)
+
+            self.timer_running = True
+            self.status_text = "Focusing..." if self.is_work_time else "Recharging..."
+            self.show_quote = True 
+            # خط پاک کننده متن حذف شد
+            self.quote_text = random.choice(self.quotes)            
+            
+            if self.is_work_time:
+                self.play_sound()
+
+            if getattr(self, "clock_event", None):
+                try: self.clock_event.cancel()
+                except: pass
+                self.clock_event = None
+
+            self.end_time = datetime.now() + timedelta(seconds=self.time_left)
+            self.clock_event = Clock.schedule_interval(self.update_clock, 0.5)
+        else:
+            self.pause_timer()
+            self.stop_sound()
                 
     def reset_timer(self):
         app = MDApp.get_running_app() # مهم
         
         self.timer_running = False
         self.end_time = None
+        self.show_quote = False               
+        self.status_text = "Ready to Focus?"  
+        self.current_task = ""
         if getattr(self, "clock_event", None):
             try: self.clock_event.cancel()
             except: pass
@@ -1026,40 +1061,6 @@ class HomeScreen(MDScreen):
             self.level_title = f"Level {level_num}: {title}"
             self.level_progress = progress * 100  # برای نوار پیشرفت (۰ تا ۱۰۰)
 
-    def toggle_timer(self):
-        raw_task = self.ids.task_input.text.strip()
-        if not raw_task:
-            self.ids.task_input.error = True
-            return
-        self.ids.task_input.error = False
-
-        if not self.timer_running:
-            # --- تغییر: ذخیره تسک در لیست ---
-            if raw_task and raw_task not in self.saved_tasks:
-                self.saved_tasks.append(raw_task)
-
-            # شروع تایمر
-            self.timer_running = True
-            self.status_text = "Focusing..." if self.is_work_time else "Recharging..."
-            
-            # پخش صدا (اگر تنظیم شده باشد)
-            if self.is_work_time:
-                self.play_sound()
-
-            # مدیریت ایونت ساعت
-            if getattr(self, "clock_event", None):
-                try: self.clock_event.cancel()
-                except: pass
-                self.clock_event = None
-
-            self.end_time = datetime.now() + timedelta(seconds=self.time_left)
-            self.clock_event = Clock.schedule_interval(self.update_clock, 0.5)
-        else:
-            # توقف تایمر
-            self.pause_timer()
-            # توقف صدا
-            self.stop_sound()
-            
     def update_clock(self, dt):
         # اگر تایمر در حال اجرا نیست یا زمان پایان مشخص نیست، ایونت را متوقف کن
         if not self.timer_running or not self.end_time:
@@ -1105,8 +1106,10 @@ class HomeScreen(MDScreen):
         self.finish_session(is_early=True)
 
     def finish_session(self, manual_duration=None, is_early=False):
+        # ... (کدهای ابتدای متد بدون تغییر) ...
         self.timer_running = False
         self.end_time = None
+        self.play_alarm()   
         if getattr(self, "clock_event", None):
             self.clock_event.cancel()
             self.clock_event = None
@@ -1114,16 +1117,20 @@ class HomeScreen(MDScreen):
         if not is_early:
             self.progress_value = 100
 
-        # --- آلارم ---
+        # --- آلارم و نوتیفیکیشن ---
         try:
             message = "Time for a break!" if self.is_work_time else "Back to work!"
             notification.notify(title="PomoPulse", message=message, timeout=5)
-            if platform == 'android' and hasattr(vibrator, 'vibrate'):
-                vibrator.vibrate(0.5)
+            # ویبره فقط برای اندروید
+            if platform == 'android':
+                try:
+                    from plyer import vibrator
+                    vibrator.vibrate(0.5)
+                except: pass
         except Exception:
             pass
 
-        app = MDApp.get_running_app() # دسترسی به کانفیگ
+        app = MDApp.get_running_app()
         task_name = self.ids.task_input.text.strip() or "General"
         
         if self.is_work_time and not is_early:
@@ -1132,7 +1139,6 @@ class HomeScreen(MDScreen):
             app.config_engine.log_session(session_type, duration_to_log, task_name)
             self.cycles_completed += 1
 
-        # تغییر فاز
         if self.is_work_time: 
             self.is_work_time = False
             if self.cycles_completed >= app.config_engine.cycles_limit:
@@ -1142,17 +1148,13 @@ class HomeScreen(MDScreen):
             else:
                 self.status_text = "Short Break ☕"
                 self.time_left = int(app.config_engine.short_break_min) * 60
+            self.show_quote = False            
         else: 
             self.is_work_time = True
             self.status_text = "Back to Work! 🚀"
+            self.show_quote = False
             if not hasattr(self, 'quotes'):
-                self.quotes = [
-                    "Focus on being productive instead of busy.",
-                    "The only way to do great work is to love what you do.",
-                    "It always seems impossible until it's done.",
-                    "Don't watch the clock; do what it does. Keep going.",
-                    "Success is the sum of small efforts, repeated day in and day out."
-                ]
+                self.quotes = ["Focus.", "Keep going."]
             self.quote_text = random.choice(self.quotes)
             self.time_left = int(app.config_engine.work_min) * 60
             
@@ -1162,6 +1164,20 @@ class HomeScreen(MDScreen):
         
         self.cycle_text = f"Cycle: {self.cycles_completed}/{app.config_engine.cycles_limit}"
         self.update_level_display()
+
+    # این متد باید حتماً داخل کلاس باشد (با یک Tab فاصله)
+    def play_alarm(self):
+        """پخش صدای آلارم هنگام اتمام سشن"""
+        try:
+            alarm_path = "assets/sounds/alarm.wav"
+            if os.path.exists(alarm_path):
+                alarm_sound = SoundLoader.load(alarm_path)
+                if alarm_sound:
+                    alarm_sound.play()
+            else:
+                print(f"Alarm file not found: {alarm_path}")
+        except Exception as e:
+            print(f"Alarm play error: {e}")
 
 class SettingsScreen(MDScreen):
     def on_enter(self):
@@ -1362,3 +1378,27 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
