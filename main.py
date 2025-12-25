@@ -392,6 +392,8 @@ KV = '''
 class GamificationEngine:
     """موتور محاسبه XP و سطح کاربر بر اساس تاریخچه پومودورو"""
     def __init__(self, history_file):
+        super().__init__(**kwargs)
+        self._clock_event = None    
         self.history_file = history_file
         self.levels = [
             (0,     300,  "The Starter"),
@@ -1121,7 +1123,12 @@ class SettingsScreen(MDScreen):
             app.switch_screen("home")
         except ValueError:
             pass
-
+    def on_leave(self, *args):
+    """لغو event Clock هنگام خروج از صفحه"""
+    if self._clock_event:
+        self._clock_event.cancel()
+        self._clock_event = None
+        
 class StatsScreen(MDScreen):
     colors = [
         (0.29, 0.66, 0.95, 1), (0.96, 0.66, 0.26, 1), (0.37, 0.73, 0.54, 1),
@@ -1292,5 +1299,6 @@ class PomoPulseApp(MDApp):
 
 if __name__ == '__main__':
     PomoPulseApp().run()
+
 
 
